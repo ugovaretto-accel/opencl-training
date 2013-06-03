@@ -10,7 +10,6 @@
 //------------------------------------------------------------------------------
 void print_devices(cl_platform_id pid) {
     cl_uint numDevices = 0;
-    cl_device_id device = 0;
     cl_int status = clGetDeviceIDs(pid, CL_DEVICE_TYPE_ALL, 
                                    0, 0, &numDevices );
     if(status != CL_SUCCESS) {
@@ -29,21 +28,24 @@ void print_devices(cl_platform_id pid) {
     }
     std::vector< char > buf(0x10000, char(0));
     cl_uint d;
+    std::cout << "Number of devices: " << devices.size() << std::endl;
+    int dev = 0;
     for(DeviceIds::const_iterator i = devices.begin();
-        i != devices.end(); ++i) {
-        std::cout << "Device *i" <<  std::endl;
+        i != devices.end(); ++i, ++dev) {
+        std::cout << "Device " << dev <<  std::endl;
         // device type
+        cl_device_type dt = cl_device_type();
         status = clGetDeviceInfo(*i, CL_DEVICE_TYPE,
-                                 sizeof(unsigned), &d, 0);
+                                 sizeof(cl_device_type), &dt, 0);
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_TYPE)" << std::endl;
             exit(-1);
         }
         std::cout << "  Type: "; 
-        if( d & CL_DEVICE_TYPE_DEFAULT     ) std::cout << "Default ";
-        if( d & CL_DEVICE_TYPE_CPU         ) std::cout << "CPU ";
-        if( d & CL_DEVICE_TYPE_GPU         ) std::cout << "GPU ";
-        if( d & CL_DEVICE_TYPE_ACCELERATOR ) std::cout << "Accelerator ";
+        if( dt & CL_DEVICE_TYPE_DEFAULT     ) std::cout << "Default ";
+        if( dt & CL_DEVICE_TYPE_CPU         ) std::cout << "CPU ";
+        if( dt & CL_DEVICE_TYPE_GPU         ) std::cout << "GPU ";
+        if( dt & CL_DEVICE_TYPE_ACCELERATOR ) std::cout << "Accelerator ";
         std::cout << std::endl;
         // device name
         status = clGetDeviceInfo(*i, CL_DEVICE_NAME,
@@ -102,9 +104,9 @@ void print_devices(cl_platform_id pid) {
         }
         std::cout << "  Max work item dim: " << maxWIDim << std::endl;
         // # work item sizes
-        std::vector< cl_uint > wiSizes(maxWIDim, 0);
+        std::vector< size_t > wiSizes(maxWIDim, size_t(0));
         status = clGetDeviceInfo(*i, CL_DEVICE_MAX_WORK_ITEM_SIZES,
-                                 sizeof(cl_uint)*wiSizes.size(),
+                                 sizeof(size_t)*wiSizes.size(),
                                  &wiSizes[0], 0);
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - "
@@ -113,7 +115,7 @@ void print_devices(cl_platform_id pid) {
             exit(-1);
         }
         std::cout << "  Work item sizes:";
-        for(std::vector< cl_uint >::const_iterator s = wiSizes.begin();
+        for(std::vector< size_t >::const_iterator s = wiSizes.begin();
             s != wiSizes.end(); ++s) {
             std::cout << ' ' << *s;
         }
@@ -172,45 +174,50 @@ void print_platforms() {
         exit(-1);
     }
     std::vector< char > buf(0x10000, char(0));
+    int p = 0;
+    std::cout << "\n***************************************************\n";  
+    std::cout << "Number of platforms: " << platforms.size() << std::endl;
     for(PlatformIds::const_iterator i = platforms.begin();
-        i != platforms.end(); ++i) {
-
-        std::cout << "Platform " << *i << std::endl; 
+        i != platforms.end(); ++i, ++p) {
+        
+        std::cout << "\n-----------\n"; 
+        std::cout << "Platform " << p << std::endl;
+        std::cout << "-----------\n";  
         status = ::clGetPlatformInfo(*i, CL_PLATFORM_VENDOR,
                                      buf.size(), &buf[ 0 ], 0 );
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetPlatformInfo(): " << std::endl;
             exit(-1);    
         }
-        std::cout << "Vendor:\t" << &buf[ 0 ] << '\n'; 
+        std::cout << "Vendor: " << &buf[ 0 ] << '\n'; 
         status = ::clGetPlatformInfo(*i, CL_PLATFORM_PROFILE,
                                      buf.size(), &buf[ 0 ], 0 );
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetPlatformInfo(): " << std::endl;
             exit(-1);
         }
-        std::cout << "Profile:\t" << &buf[ 0 ] << '\n'; 
+        std::cout << "Profile: " << &buf[ 0 ] << '\n'; 
         status = ::clGetPlatformInfo(*i, CL_PLATFORM_VERSION,
                                      buf.size(), &buf[ 0 ], 0 );
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetPlatformInfo(): " << std::endl;
             exit(-1);
         }
-        std::cout << "Version:\t" << &buf[ 0 ] << '\n';     
+        std::cout << "Version: " << &buf[ 0 ] << '\n';     
         status = ::clGetPlatformInfo(*i, CL_PLATFORM_NAME,
                                      buf.size(), &buf[ 0 ], 0 );
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetPlatformInfo(): " << std::endl;
             exit(-1);
         }
-        std::cout << "Name:\t" << &buf[ 0 ] << '\n';  
+        std::cout << "Name: " << &buf[ 0 ] << '\n';  
         status = ::clGetPlatformInfo(*i, CL_PLATFORM_EXTENSIONS,
                                      buf.size(), &buf[ 0 ], 0 );
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetPlatformInfo(): " << std::endl;
             exit(-1);
         }
-        std::cout << "Extensions:\t" << &buf[ 0 ] << '\n';
+        std::cout << "Extensions: " << &buf[ 0 ] << '\n';
         print_devices(*i);
         std::cout << "\n===================================================\n"; 
 
