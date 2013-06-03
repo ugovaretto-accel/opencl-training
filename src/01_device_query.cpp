@@ -60,7 +60,8 @@ void print_devices(cl_platform_id pid) {
         status = clGetDeviceInfo(*i, CL_DEVICE_VERSION,
                                  buf.size(), &buf[0], 0);
         if(status != CL_SUCCESS) {
-            std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_VERSION)" << std::endl;
+            std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_VERSION)"
+                      << std::endl;
             exit(-1);
         }
         std::cout << "  Version: " << &buf[0] << std::endl; 
@@ -69,7 +70,8 @@ void print_devices(cl_platform_id pid) {
         status = clGetDeviceInfo(*i, CL_DEVICE_VENDOR,
                                  buf.size(), &buf[0], 0);
         if(status != CL_SUCCESS) {
-            std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_VENDOR)" << std::endl;
+            std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_VENDOR)"
+                      << std::endl; 
             exit(-1);
         }
         std::cout << "  Vendor: " << &buf[0] << std::endl; 
@@ -78,7 +80,8 @@ void print_devices(cl_platform_id pid) {
         status = clGetDeviceInfo(*i, CL_DEVICE_PROFILE,
                                  buf.size(), &buf[0], 0);
         if(status != CL_SUCCESS) {
-            std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_PROFILE)" << std::endl;
+            std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_PROFILE)" 
+                      << std::endl;
             exit(-1);
         }
         std::cout << "  Profile: " << &buf[0] << std::endl; 
@@ -124,7 +127,8 @@ void print_devices(cl_platform_id pid) {
         status = clGetDeviceInfo(*i, CL_DEVICE_MAX_CLOCK_FREQUENCY,
                                  sizeof(cl_uint), &d, 0);
         if(status != CL_SUCCESS) {
-            std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_MAX_CLOCK_FREQUENCY)"
+            std::cerr << "ERROR - "
+                      << "clGetDeviceInfo(CL_DEVICE_MAX_CLOCK_FREQUENCY)"
                       << std::endl;
             exit(-1);
         }
