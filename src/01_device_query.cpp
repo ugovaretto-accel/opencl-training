@@ -11,8 +11,8 @@
 void print_devices(cl_platform_id pid) {
     cl_uint numDevices = 0;
     cl_device_id device = 0;
-    cl_int status = clGetDeviceIDs(platformID, CL_DEVICE_TYPE_ALL, 
-                                     0, 0, &numDevices );
+    cl_int status = clGetDeviceIDs(pid, CL_DEVICE_TYPE_ALL, 
+                                   0, 0, &numDevices );
     if(status != CL_SUCCESS) {
         std::cerr << "ERROR - clGetDeviceIDs" << std::endl;
         exit(-1);
@@ -21,7 +21,7 @@ void print_devices(cl_platform_id pid) {
     
     typedef std::vector< cl_device_id > DeviceIds;
     DeviceIds devices(numDevices);
-    status = clGetDeviceIDs(platformID, CL_DEVICE_TYPE_ALL,
+    status = clGetDeviceIDs(pid, CL_DEVICE_TYPE_ALL,
                             devices.size(), &devices[ 0 ], 0 );
     if(status != CL_SUCCESS) {
         std::cerr << "ERROR - clGetDeviceIDs" << std::endl;
@@ -43,7 +43,7 @@ void print_devices(cl_platform_id pid) {
         if( d & CL_DEVICE_TYPE_DEFAULT     ) std::cout << "Default ";
         if( d & CL_DEVICE_TYPE_CPU         ) std::cout << "CPU ";
         if( d & CL_DEVICE_TYPE_GPU         ) std::cout << "GPU ";
-        if( d & CL_DEVICE_TYPE_ACCELERATOR ) stc::cout << "Accelerator ";
+        if( d & CL_DEVICE_TYPE_ACCELERATOR ) std::cout << "Accelerator ";
         std::cout << std::endl;
         // device name
         status = clGetDeviceInfo(*i, CL_DEVICE_NAME,
@@ -113,9 +113,9 @@ void print_devices(cl_platform_id pid) {
             exit(-1);
         }
         std::cout << "  Work item sizes:";
-        for(std::vector<cl_uin>::const_iterator i = wiSizes.begin();
-            i != wiSizes.end(); ++i) {
-            std::cout << ' ' << *i;
+        for(std::vector< cl_uint >::const_iterator s = wiSizes.begin();
+            s != wiSizes.end(); ++s) {
+            std::cout << ' ' << *s;
         }
         std::cout << std::endl;
         // max clock frequency
