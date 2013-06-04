@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <cstdlib>
+#include <CL/cl.h>
 
 //------------------------------------------------------------------------------
 void check_cl_error(cl_int status, const char* msg) {
@@ -44,11 +45,11 @@ cl_context create_cl_context(const std::string& platformName,
     cl_platform_id platformID;
     PlatformIDs::const_iterator pi = platformIDs.begin();
     for(; pi != platformIDs.end(); ++pi) {
-        status = clGetDeviceInfo(*i, CL_DEVICE_NAME,
+        status = clGetPlatformInfo(*pi, CL_PLATFORM_NAME,
                                  buf.size(), &buf[0], 0);
-        check_cl_error(status, "clGetDeviceInfo");
+        check_cl_error(status, "clGetPlatformInfo");
         if(platformName == &buf[0]) {
-            platformID = *i;
+            platformID = *pi;
             break; 
         }
     } 
@@ -75,7 +76,7 @@ cl_context create_cl_context(const std::string& platformName,
                   << std::endl;
         exit(EXIT_FAILURE);          
     }                      
-    int numDevices = 0; 
+    cl_uint numDevices = 0; 
     status = clGetDeviceIDs(platformID, deviceType, 0, 0, &numDevices);
     check_cl_error(status, "clGetDeviceIDs");
     if(numDevices < 1) {
@@ -115,27 +116,27 @@ void print_cl_context_info(cl_context ctx) {
     status = clGetContextInfo(ctx,
                               CL_CONTEXT_REFERENCE_COUNT,
                               sizeof(cl_uint),
-                              &refCount);
+                              &refCount,  0);
     check_cl_error(status, "clGetContextInfo");
     std::cout << "  reference count:    " << refCount << std::endl;
     cl_device_id deviceID; //only a single device was selected
     status = clGetContextInfo(ctx,
                               CL_CONTEXT_DEVICES,
                               sizeof(cl_device_id),
-                              &deviceID);
+                              &deviceID, 0);
     check_cl_error(status, "clGetContextInfo");
     std::cout << "  device id reference: " << deviceID << std::endl;
     cl_context_properties ctxProps[3];
     status = clGetContextInfo(ctx,
                               CL_CONTEXT_PROPERTIES,
                               sizeof(cl_uint),
-                              &ctxProps[0]);
+                              &ctxProps[0], 0);
     check_cl_error(status, "clGetContextInfo");
     cl_platform_id pid = cl_platform_id(ctxProps[1]);
-    st::vector< char > buf(0x10000, 0);
-    status = clGetPlatformInfo(pis, CL_PLATFORM_NAME, buf.size(), &buf[0], 0);
+    std::vector< char > buf(0x10000, 0);
+    status = clGetPlatformInfo(pid, CL_PLATFORM_NAME, buf.size(), &buf[0], 0);
     check_cl_error(status, "clGetPlatformInfo");
-    std::cout << "  platform:           " << buf << std::endl;
+    std::cout << "  platform:           " << &buf[0] << std::endl;
 }
 
 //------------------------------------------------------------------------------
@@ -150,7 +151,7 @@ int main(int argc, char** argv) {
     std::string platformName = argv[ 1 ];
     std::string deviceType = argv[2]; // use stringified enum
     int deviceNum = atoi(argv[3]);
-    cl_context ctx = create_cl_context(platformName, deviceType, deviceNum)
+    cl_context ctx = create_cl_context(platformName, deviceType, deviceNum);
     std::cout << "OpenCL context created" << std::endl;
     print_cl_context_info(ctx);
     check_cl_error(clReleaseContext(ctx), "clReleaseContext");
