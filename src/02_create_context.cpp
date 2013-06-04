@@ -118,7 +118,7 @@ void print_cl_context_info(cl_context ctx) {
                               sizeof(cl_uint),
                               &refCount,  0);
     check_cl_error(status, "clGetContextInfo");
-    std::cout << "  reference count:    " << refCount << std::endl;
+    std::cout << "  reference count:     " << refCount << std::endl;
     cl_device_id deviceID; //only a single device was selected
     status = clGetContextInfo(ctx,
                               CL_CONTEXT_DEVICES,
@@ -129,14 +129,14 @@ void print_cl_context_info(cl_context ctx) {
     cl_context_properties ctxProps[3];
     status = clGetContextInfo(ctx,
                               CL_CONTEXT_PROPERTIES,
-                              sizeof(cl_uint),
+                              3 * sizeof(cl_context_properties),
                               &ctxProps[0], 0);
     check_cl_error(status, "clGetContextInfo");
     cl_platform_id pid = cl_platform_id(ctxProps[1]);
     std::vector< char > buf(0x10000, 0);
     status = clGetPlatformInfo(pid, CL_PLATFORM_NAME, buf.size(), &buf[0], 0);
     check_cl_error(status, "clGetPlatformInfo");
-    std::cout << "  platform:           " << &buf[0] << std::endl;
+    std::cout << "  platform:            " << &buf[0] << std::endl;
 }
 
 //------------------------------------------------------------------------------
