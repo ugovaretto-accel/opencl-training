@@ -146,7 +146,7 @@ void print_cl_context_info(cl_context ctx) {
 int main(int argc, char** argv) {
     if(argc < 4) {
         std::cout << "usage: " << argv[0]
-                  << "<platform name> <device type = default | cpu | gpu "
+                  << " <platform name> <device type = default | cpu | gpu "
                      "| acc | all>  <device num>"
                   << std::endl;
         return 0; 
