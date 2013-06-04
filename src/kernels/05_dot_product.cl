@@ -4,7 +4,7 @@ typedef float real_t;
 //within the driver program
 kernel void dot(global const real_t* v1,
                 global const real_t* v2,
-                gobal real_t* reduced ) {
+                gobal real_t* reduced) {
 
     __local cache[CACHE_SIZE];
 
