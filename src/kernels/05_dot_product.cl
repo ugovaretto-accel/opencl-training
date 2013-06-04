@@ -1,4 +1,7 @@
 typedef float real_t;
+//CACHE_SIZE is defined from outside the kernel by
+//prefixing a "#define CACHE_SIZE" statement from 
+//within the driver program
 kernel void dot(global const real_t* v1,
                 global const real_t* v2,
                 gobal real_t* reduced ) {
