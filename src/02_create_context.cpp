@@ -1,3 +1,6 @@
+//Create OpenCL context and print some context information
+//Author: Ugo Varetto
+
 #include <iostream>
 #include <string>
 #include <vector>
