@@ -14,7 +14,11 @@
 #include <vector>
 #include <algorithm>
 #include <cstdlib>
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#else
 #include <CL/cl.h>
+#endif
 
 //------------------------------------------------------------------------------
 void check_cl_error(cl_int status, const char* msg) {
