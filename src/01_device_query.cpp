@@ -14,7 +14,7 @@ void print_devices(cl_platform_id pid) {
                                    0, 0, &numDevices );
     if(status != CL_SUCCESS) {
         std::cerr << "ERROR - clGetDeviceIDs" << std::endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
     if(numDevices < 1) return;
     
@@ -24,7 +24,7 @@ void print_devices(cl_platform_id pid) {
                             devices.size(), &devices[ 0 ], 0 );
     if(status != CL_SUCCESS) {
         std::cerr << "ERROR - clGetDeviceIDs" << std::endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
     std::vector< char > buf(0x10000, char(0));
     cl_uint d;
@@ -39,7 +39,7 @@ void print_devices(cl_platform_id pid) {
                                  sizeof(cl_device_type), &dt, 0);
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_TYPE)" << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "  Type: "; 
         if( dt & CL_DEVICE_TYPE_DEFAULT     ) std::cout << "Default ";
@@ -52,7 +52,7 @@ void print_devices(cl_platform_id pid) {
                                  buf.size(), &buf[0], 0);
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_NAME)" << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "  Name: " << &buf[0] << std::endl; 
         std::fill(buf.begin(), buf.end(), char(0));
@@ -62,7 +62,7 @@ void print_devices(cl_platform_id pid) {
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_VERSION)"
                       << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "  Version: " << &buf[0] << std::endl; 
         std::fill(buf.begin(), buf.end(), char(0));
@@ -72,7 +72,7 @@ void print_devices(cl_platform_id pid) {
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_VENDOR)"
                       << std::endl; 
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "  Vendor: " << &buf[0] << std::endl; 
         std::fill(buf.begin(), buf.end(), char(0));
@@ -82,7 +82,7 @@ void print_devices(cl_platform_id pid) {
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_PROFILE)" 
                       << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "  Profile: " << &buf[0] << std::endl; 
         std::fill(buf.begin(), buf.end(), char(0));
@@ -92,7 +92,7 @@ void print_devices(cl_platform_id pid) {
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_MAX_COMPUTE_UNITS)"
                       << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "  Compute units: " << d << std::endl;
         // # work item dimensions
@@ -103,7 +103,7 @@ void print_devices(cl_platform_id pid) {
             std::cerr << "ERROR - "
                       << "clGetDeviceInfo(CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS)"
                       << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "  Max work item dim: " << maxWIDim << std::endl;
         // # work item sizes
@@ -115,7 +115,7 @@ void print_devices(cl_platform_id pid) {
             std::cerr << "ERROR - "
                       << "clGetDeviceInfo(CL_DEVICE_MAX_WORK_ITEM_SIZES)"
                       << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "  Work item sizes:";
         for(std::vector< size_t >::const_iterator s = wiSizes.begin();
@@ -130,7 +130,7 @@ void print_devices(cl_platform_id pid) {
             std::cerr << "ERROR - "
                       << "clGetDeviceInfo(CL_DEVICE_MAX_CLOCK_FREQUENCY)"
                       << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "  Max clock freq: " << d << " MHz" << std::endl;
         // global memory
@@ -140,7 +140,7 @@ void print_devices(cl_platform_id pid) {
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_GLOBAL_MEM_SIZE)"
                       << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "  Global memory: " << m << " bytes" << std::endl;
         // local memory
@@ -150,7 +150,7 @@ void print_devices(cl_platform_id pid) {
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetDeviceInfo(CL_DEVICE_LOCAL_MEM_SIZE)"
                       << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "  Local memory: " << m << " bytes" << std::endl;
     }
@@ -164,18 +164,18 @@ void print_platforms() {
     cl_int status = clGetPlatformIDs(0, 0, &numPlatforms);
     if(status != CL_SUCCESS) {
         std::cerr << "ERROR - clGetPlatformIDs()" << std::endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
     if(numPlatforms < 1) {
         std::cout << "No OpenCL platform detected" << std::endl;
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     typedef std::vector< cl_platform_id > PlatformIds;
     PlatformIds platforms(numPlatforms);
     status = clGetPlatformIDs(platforms.size(), &platforms[0], 0);
     if(status != CL_SUCCESS) {
         std::cerr << "ERROR - clGetPlatformIDs()" << std::endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
     std::vector< char > buf(0x10000, char(0));
     int p = 0;
@@ -191,35 +191,35 @@ void print_platforms() {
                                      buf.size(), &buf[ 0 ], 0 );
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetPlatformInfo(): " << std::endl;
-            exit(-1);    
+            exit(EXIT_FAILURE);    
         }
         std::cout << "Vendor: " << &buf[ 0 ] << '\n'; 
         status = ::clGetPlatformInfo(*i, CL_PLATFORM_PROFILE,
                                      buf.size(), &buf[ 0 ], 0 );
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetPlatformInfo(): " << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "Profile: " << &buf[ 0 ] << '\n'; 
         status = ::clGetPlatformInfo(*i, CL_PLATFORM_VERSION,
                                      buf.size(), &buf[ 0 ], 0 );
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetPlatformInfo(): " << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "Version: " << &buf[ 0 ] << '\n';     
         status = ::clGetPlatformInfo(*i, CL_PLATFORM_NAME,
                                      buf.size(), &buf[ 0 ], 0 );
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetPlatformInfo(): " << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "Name: " << &buf[ 0 ] << '\n';  
         status = ::clGetPlatformInfo(*i, CL_PLATFORM_EXTENSIONS,
                                      buf.size(), &buf[ 0 ], 0 );
         if(status != CL_SUCCESS) {
             std::cerr << "ERROR - clGetPlatformInfo(): " << std::endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
         std::cout << "Extensions: " << &buf[ 0 ] << '\n';
         print_devices(*i);
