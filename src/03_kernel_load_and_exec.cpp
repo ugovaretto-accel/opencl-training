@@ -180,12 +180,12 @@ int main(int argc, char** argv) {
     //log output if any
     char buffer[0x10000] = "";
     size_t len = 0;
-    status = ::clGetProgramBuildInfo(program,
-                                     deviceID,
-                                     CL_PROGRAM_BUILD_LOG,
-                                     sizeof(buffer),
-                                     buffer,
-                                     &len);
+    status = clGetProgramBuildInfo(program,
+                                   deviceID,
+                                   CL_PROGRAM_BUILD_LOG,
+                                   sizeof(buffer),
+                                   buffer,
+                                   &len);
     check_cl_error(status, "clBuildProgramInfo");
     if(len > 1) std::cout << "Build output: " << buffer << std::endl;
     check_cl_error(buildStatus, "clBuildProgram");
