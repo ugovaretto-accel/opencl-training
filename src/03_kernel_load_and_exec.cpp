@@ -207,7 +207,7 @@ int main(int argc, char** argv) {
     check_cl_error(status, "clCreateBuffer");
 
     //5)create command queue
-    cl_command_queue queue = clCreateCommandQueue(ctx, deviceID, 0, &status);
+    cl_command_queue commands = clCreateCommandQueue(ctx, deviceID, 0, &status);
     check_cl_error(status, "clCreateCommandQueue");
    
     //6)set kernel parameters
@@ -232,7 +232,7 @@ int main(int argc, char** argv) {
     const size_t localWorkSize[1] = {1}; 
 
     //8)launch kernel
-    status = clEnqueueNDRangeKernel(queue, //queue
+    status = clEnqueueNDRangeKernel(commands, //queue
                                     kernel, //kernel                                   
                                     1, //number of dimensions for work-items
                                     0, //global work offset
@@ -252,7 +252,7 @@ int main(int argc, char** argv) {
 
     //9)read back and print results
     std::vector< real_t > hostArray(ARRAY_LENGTH, real_t(0));
-    status = clEnqueueReadBuffer(queue,
+    status = clEnqueueReadBuffer(commands,
                                  outputCLBuffer,
                                  CL_TRUE, //blocking read
                                  0, //offset
@@ -272,6 +272,9 @@ int main(int argc, char** argv) {
 
     //10)release resources
     check_cl_error(clReleaseMemObject(outputCLBuffer), "clReleaseMemObject");
+    check_cl_error(clReleaseCommandQueue(commands),"clReleaseCommandQueue");
+    check_cl_error(clReleaseKernel(kernel), "clReleaseKernel");
+    check_cl_error(clReleaseProgram(program), "clReleaseProgram");
     check_cl_error(clReleaseContext(ctx), "clReleaseContext");
     std::cout << "Released OpenCL resources" << std::endl;
     return 0;
