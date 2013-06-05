@@ -35,6 +35,7 @@ CLEnv creat_cl_rtenv(const std::string& platformName,
                                       + "\n" 
                                       + load_text(clSourcePath);
     const char* src = programSource.c_str();
+    std::cout << src << std::endl;            
     const size_t sourceLength = programSource.length();
 
     //3)build program and create kernel
