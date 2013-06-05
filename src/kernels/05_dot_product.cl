@@ -1,7 +1,12 @@
+#ifdef DOUBLE
+#pragma OPENCL EXTENSION cl_khr_fp64: enable
+typedef double real_t;
+#else
 typedef float real_t;
-//CACHE_SIZE is defined from outside the kernel by
-//prefixing a "#define CACHE_SIZE" statement from 
-//within the driver program
+#endif
+//CACHE_SIZE and DOUBLE are defined from outside the kernel by
+//prefixing a "#define CACHE_SIZE" and "#define DOUBLE"
+//statement from within the driver program
 kernel void dot(global const real_t* v1,
                 global const real_t* v2,
                 gobal real_t* reduced) {
