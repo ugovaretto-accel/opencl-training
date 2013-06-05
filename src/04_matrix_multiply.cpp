@@ -35,7 +35,6 @@ CLEnv creat_cl_rtenv(const std::string& platformName,
                                       + "\n" 
                                       + load_text(clSourcePath);
     const char* src = programSource.c_str();
-    std::cout << src << std::endl;            
     const size_t sourceLength = programSource.length();
 
     //3)build program and create kernel
@@ -119,7 +118,7 @@ bool check_result(const std::vector< real_t >& v1,
 	              const std::vector< real_t >& v2,
 	              double eps) {
     for(int i = 0; i != v1.size(); ++i) {
-    	if(double(std::abs(v1[i] - v2[i])) > eps) return false;
+    	if(double(std::fabs(v1[i] - v2[i])) > eps) return false;
     }
     return true;
 }
@@ -134,10 +133,10 @@ int main(int argc, char** argv) {
                   << std::endl;
         return 0; 
     }
-    const double EPS = 0.00001;
-    const int SIZE = 16; //16 x 16
+    const double EPS = 0.001;
+    const int SIZE = 4; //16 x 16
     const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
-    const int CACHE_SIZE = 4; //4 x 4 tiles
+    const int CACHE_SIZE = 1; //4 x 4 tiles
     cl_int status;
     CLEnv clenv = creat_cl_rtenv(argv[1], argv[2], atoi(argv[3]),
                                  argv[4], argv[5],
@@ -164,12 +163,14 @@ int main(int argc, char** argv) {
                                  CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                  BYTE_SIZE,
                                  &A[0], //<-- copy data from A
-                                 &status); 
+                                 &status);
+    check_cl_error(status, "clCreateBuffer");                              
     cl_mem devB = clCreateBuffer(clenv.context,
                                  CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                  BYTE_SIZE,
-                                 &B[0], //<-- copy data from A
-                                 &status); 
+                                 &B[0], //<-- copy data from B
+                                 &status);
+    check_cl_error(status, "clCreateBuffer");                              
 
     //set kernel parameters
     status = clSetKernelArg(clenv.kernel, //kernel
@@ -182,15 +183,18 @@ int main(int argc, char** argv) {
                             sizeof(cl_mem), //size of parameter
                             &devB); //pointer to parameter
     check_cl_error(status, "clSetKernelArg(B)");
-    //set kernel parameters
     status = clSetKernelArg(clenv.kernel, //kernel
                             2,      //parameter id
                             sizeof(cl_mem), //size of parameter
                             &devC); //pointer to parameter
     check_cl_error(status, "clSetKernelArg(C)");
-    //set kernel parameters
     status = clSetKernelArg(clenv.kernel, //kernel
                             3,      //parameter id
+                            sizeof(int), //size of parameter
+                            &SIZE); //pointer to parameter
+    check_cl_error(status, "clSetKernelArg(SIZE)");
+     status = clSetKernelArg(clenv.kernel, //kernel
+                            4,      //parameter id
                             sizeof(int), //size of parameter
                             &SIZE); //pointer to parameter
     check_cl_error(status, "clSetKernelArg(SIZE)");

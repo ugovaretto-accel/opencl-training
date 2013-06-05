@@ -19,10 +19,11 @@ kernel void matmul(global const real_t* A,
                    int b_columns) {
     const int column = get_global_id(0);
     const int row    = get_global_id(1);
+    real_t e = 0;
     for(int c = 0; c != a_columns; ++c) {
-        C[row * column + c] +=  A[row * a_columns + c]
-                              * B[c * b_columns + column ]; 
+         e +=  A[row * a_columns + c] * B[c * b_columns + column ]; 
     }
+    C[row * b_columns + column] = e;
 }
 
 //square matrices only
@@ -30,7 +31,8 @@ kernel void matmul(global const real_t* A,
 kernel void block_matmul(global const real_t* A,
                          global const real_t* B,
                          global real_t* C,
-                         int columns) {
+                         int columns,
+                         int b_columns) {
     __local real_t a[CACHE_ROWS][CACHE_COLUMNS];
     __local real_t b[CACHE_ROWS][CACHE_COLUMNS];
     const int lcol = get_local_id(0);
