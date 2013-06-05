@@ -105,7 +105,8 @@ void host_matmul(const std::vector< real_t >& A,
 		for(int c = 0; c != columns; ++c) {
 			C[r*b_columns + c] = 0;
 			for(int ic = 0; ic != a_columns; ++ic) {
-				C[r*b_columns + c] += A[r*a_columns + ic]*B[ic*b_colummns + c];
+				C[r*b_columns + c] += A[r*a_columns + ic]
+				                      * B[ic*b_colummns + c];
 			}
 		}
 	}
@@ -132,6 +133,7 @@ int main(int argc, char** argv) {
         return 0; 
     }
     const double EPS = 0.00001;
+    const int SIZE = 16; //16 x 16
     CLRunTimeEnv clenv = creat_cl_rtenv(argv[1], argv[2], atoi(argv[3]),
     	                                argv[4], argv[5],
     	                                "#define CACHE_ROWS 4\n"

@@ -15,15 +15,17 @@ typedef float real_t;
 kernel void matmul(global const real_t* A,
                    global const real_t* B,
                    global real_t* C,
-                   int columns) {
+                   int a_columns,
+                   int b_columns) {
     const int column = get_global_id(0);
     const int row    = get_global_id(1);
-    for(int c = 0; c != columns; ++c) {
-        C[row * column + c] +=  A[row * columns + c]
-                              * B[c * columns + column ]; 
+    for(int c = 0; c != a_columns; ++c) {
+        C[row * column + c] +=  A[row * a_columns + c]
+                              * B[c * b_columns + column ]; 
     }
 }
 
+//square matrices only
 //work item size must be exactly CACHE_COLS X CACHE_ROWS
 kernel void block_matmul(global const real_t* A,
                          global const real_t* B,
@@ -52,10 +54,10 @@ kernel void block_matmul_generic(global const real_t* A,
                                  global const real_t* B,
                                  global real_t* C,
                                  int a_columns,
-                                 int b_rows) {
+                                 int b_columns) {
     __local a[CACHE_ROWS][CACHE_COLS];
     __local b[CACHE_ROWS][CACHE_COLS];
-    const int row = a_rows;
+    const int rows = a_columns;
     const int columns = b_columns;
     const int lcol = get_local_id(0);
     const int lrow = get_local_id(1);
@@ -74,8 +76,8 @@ kernel void block_matmul_generic(global const real_t* A,
         	    b[lrow][lcol] = (real_t) 0;
         	    return;
     		} else {
-        	    a[lrow][lcol] = A[globalIdx];
-        	    b[lrow][lcol] = B[globalIdx];
+        	    a[lrow][lcol] = A[row * a_columns + col];
+        	    b[lrow][lcol] = B[row * b_columns + col];
     		}
     		barrier(CLK_LOCAL_MEM_FENCE);
     		real_t e = (real_t) 0;
