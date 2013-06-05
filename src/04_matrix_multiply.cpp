@@ -2,12 +2,15 @@
 //Author: Ugo Varetto
 #include <iostream>
 #include <cstdlib>
+#include <ctime>
+#include <vector>
+#include <cmath>
 #include "clutil.h"
 
 typedef float real_t;
 
 //------------------------------------------------------------------------------
-struct CLRunTimeEnv {
+struct CLEnv {
 	cl_context context;
 	cl_program program;
 	cl_kernel kernel;
@@ -15,14 +18,14 @@ struct CLRunTimeEnv {
 };
 
 //------------------------------------------------------------------------------
-CLRunTimeResources creat_cl_rtenv(const std::string& platformName,
-	                              const std::string& deviceType,
-	                              int deviceNum,
-	                              const char* clSourcePath,
-	                              const char* kernelName, 
-	                              const std::string& clSourcePrefix) {
+CLEnv creat_cl_rtenv(const std::string& platformName,
+                     const std::string& deviceType,
+                     int deviceNum,
+                     const char* clSourcePath,
+                     const char* kernelName, 
+                     const std::string& clSourcePrefix) {
 
-    CLRunTimeEnv rt;
+    CLEnv rt;
 
 	//1)create context
     rt.context = create_cl_context(platformName, deviceType, deviceNum);
@@ -63,7 +66,6 @@ CLRunTimeResources creat_cl_rtenv(const std::string& platformName,
     if(len > 1) std::cout << "Build output: " << buffer << std::endl;
     check_cl_error(buildStatus, "clBuildProgram");
 
-    const char* kernelName = argv[5];
     rt.kernel = clCreateKernel(rt.program, kernelName, &status);
     check_cl_error(status, "clCreateKernel"); 
 
@@ -74,21 +76,20 @@ CLRunTimeResources creat_cl_rtenv(const std::string& platformName,
 }
 
 //------------------------------------------------------------------------------
-void release_cl_rtenv(CLRunTimeEnv& rt) {
-    check_cl_error(clReleaseCommandQueue(rt.commandQueue),
+void release_cl_rtenv(CLEnv& e) {
+    check_cl_error(clReleaseCommandQueue(e.commandQueue),
     	                                 "clReleaseCommandQueue");
-    check_cl_error(clReleaseKernel(rt.kernel), "clReleaseKernel");
-    check_cl_error(clReleaseProgram(rt.program), "clReleaseProgram");
-    check_cl_error(clReleaseContext(rt.context), "clReleaseContext");
+    check_cl_error(clReleaseKernel(e.kernel), "clReleaseKernel");
+    check_cl_error(clReleaseProgram(e.program), "clReleaseProgram");
+    check_cl_error(clReleaseContext(e.context), "clReleaseContext");
 }
 
 //------------------------------------------------------------------------------
 std::vector< real_t > create_matrix(int cols, int rows) {
 	std::vector< real_t > m(cols * rows);
-	rand(time(0));
+	srand(time(0));
 	for(std::vector<real_t>::iterator i = m.begin();
 	    i != m.end(); ++i) *i = rand() % 10; 
-	}
 	return m;
 }
 
@@ -106,7 +107,7 @@ void host_matmul(const std::vector< real_t >& A,
 			C[r*b_columns + c] = 0;
 			for(int ic = 0; ic != a_columns; ++ic) {
 				C[r*b_columns + c] += A[r*a_columns + ic]
-				                      * B[ic*b_colummns + c];
+				                      * B[ic*b_columns + c];
 			}
 		}
 	}
@@ -134,20 +135,22 @@ int main(int argc, char** argv) {
     }
     const double EPS = 0.00001;
     const int SIZE = 16; //16 x 16
-    CLRunTimeEnv clenv = creat_cl_rtenv(argv[1], argv[2], atoi(argv[3]),
-    	                                argv[4], argv[5],
-    	                                "#define CACHE_ROWS 4\n"
-    	                                "#define CACHE_COLUMNS 4\n");
+    const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
+    const int CACHE_SIZE = 4; //4 x 4 tiles
+    cl_int status;
+    CLEnv clenv = creat_cl_rtenv(argv[1], argv[2], atoi(argv[3]),
+                                 argv[4], argv[5],
+                                 "#define CACHE_ROWS 4\n"
+                                 "#define CACHE_COLUMNS 4\n");
    
 
     //create input and output matrices
-    const std::vector<real_t> A = create_matrix(SIZE, SIZE);
-    const std::vector<real_t> B = create_matrix(SIZE, SIZE);
+    std::vector<real_t> A = create_matrix(SIZE, SIZE);
+    std::vector<real_t> B = create_matrix(SIZE, SIZE);
     std::vector<real_t> C(SIZE * SIZE,real_t(0));
     std::vector<real_t> refC(SIZE * SIZE,real_t(0));        
     
     //allocate output buffer on OpenCL device
-    const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
     cl_mem devC = clCreateBuffer(clenv.context,
                                  CL_MEM_WRITE_ONLY,
                                  BYTE_SIZE,
@@ -228,9 +231,9 @@ int main(int argc, char** argv) {
                                  0); //event identifying this specific operation
     check_cl_error(status, "clEnqueueReadBuffer");
     
-    host_matmul(A, B, refC);
+    host_matmul(A, B, refC, SIZE, SIZE);
 
-    if(check_result(refC, C, EPS) {
+    if(check_result(refC, C, EPS)) {
     	std::cout << "PASSED" << std::endl;
     } else {
     	std::cout << "FAILED" << std::endl;

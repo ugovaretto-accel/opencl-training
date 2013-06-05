@@ -5,7 +5,7 @@
 #include <fstream>
 #include <iterator>
 #include <vector>
-#include <algorith>
+#include <algorithm>
 #include <cstdlib>
 
 //------------------------------------------------------------------------------
@@ -128,10 +128,10 @@ std::string load_text(const char* filepath) {
 cl_device_id get_device_id(cl_context ctx) {
     cl_device_id deviceID; 
     // retrieve actual device id from context
-    status = clGetContextInfo(ctx,
-                              CL_CONTEXT_DEVICES,
-                              sizeof(cl_device_id),
-                              &deviceID, 0);
+    cl_int status = clGetContextInfo(ctx,
+                                     CL_CONTEXT_DEVICES,
+                                     sizeof(cl_device_id),
+                                     &deviceID, 0);
     check_cl_error(status, "clGetContextInfo");
     return deviceID;
 }
