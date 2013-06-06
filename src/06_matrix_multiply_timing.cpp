@@ -55,17 +55,23 @@ bool check_result(const std::vector< real_t >& v1,
 
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
-    if(argc < 6) {
+    if(argc < 8) {
         std::cout << "usage: " << argv[0]
                   << " <platform name> <device type = default | cpu | gpu "
                      "| acc | all>  <device num> <OpenCL source file path>"
-                     " <kernel name>"
+                     " <kernel name> <size> <wgroup size>"
                   << std::endl;
         return 0; 
     }
-    const int SIZE = 16; //16 x 16
+    const int SIZE = atoi[6];
     const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
-    const int BLOCK_SIZE = 4; //4 x 4 tiles
+    const int BLOCK_SIZE = atoi[7]; //4 x 4 tiles
+    if( SIZE < 1 || BLOCK_SIZE < 1 || SIZE % BLOCK_SIZE != 0) {
+    	std::cerr << "ERROR - size and block size *must* be greater than zero "
+    	             "and size *must* be evenly divsible by block size"
+    	          << std::endl;
+    	exit(EXIT_FAILURE);
+    }
     //setup text header that will be prefixed to opencl code
     std::ostringstream clheaderStream;
     clheaderStream << "#define BLOCK_SIZE " << BLOCK_SIZE << '\n';
@@ -74,8 +80,9 @@ int main(int argc, char** argv) {
     const double EPS = 0.000000001;
 #else
     const double EPS = 0.00001;
-#endif    
-    CLEnv clenv = create_clenv(argv[1], argv[2], atoi(argv[3]), false,
+#endif
+    //enable profiling on queue    
+    CLEnv clenv = create_clenv(argv[1], argv[2], atoi(argv[3]), true,
                                argv[4], argv[5], clheaderStream.str());
    
     cl_int status;
@@ -137,6 +144,11 @@ int main(int argc, char** argv) {
     const size_t localWorkSize[2] = {BLOCK_SIZE, BLOCK_SIZE}; 
 
     //8)launch kernel
+    //to make sure there are no pending commands in the queue do wait
+    //for any commands to finish execution
+    cl_status = clFinish(clenv.commandQueue);
+    check_cl_error(status, "clFinish");
+    cl_event profilingEvent;
     status = clEnqueueNDRangeKernel(clenv.commandQueue, //queue
                                     clenv.kernel, //kernel                                   
                                     2, //number of dimensions for work-items
@@ -147,11 +159,35 @@ int main(int argc, char** argv) {
                                        //complete before kernel executed
                                     0, //list of events that need to complete
                                        //before kernel executed
-                                    0); //event object identifying this
-                                        //particular kernel execution instance
-
+                                    profilingEvent); //event object 
+                                                     //identifying this
+                                                     //particular kernel
+                                                     //execution instance
     check_cl_error(status, "clEnqueueNDRangeKernel");
-    
+    cl_status = clFinish(clenv.commandQueue); //ensure kernel execution is
+    //terminated; used for timing purposes only; there is no need to enforce
+    //termination when issuing a subsequent blocking data transfer operation
+    check_cl_error(status, "clFinish");
+    status = clWaitForEvents(1, &profilingEvent)
+    check_cl_error(status, "clWaitForEvents");
+    cl_ulong kernelStartTime = cl_ulong(0);
+    cl_ulong kernelEndTime   = cl_ulong(0);
+    size_t retBytes = size_t(0);
+    double kernelElapsedTime_ms = double(0); 
+   
+    status = clGetEventProfilingInfo(profilingEvent,
+									 CL_PROFILING_COMMAND_QUEUED,
+									 sizeof(cl_ulong),
+                                     &kernelStartTime, &retBytes);
+    check_cl_error(status, "clGetEventProfilingInfo");
+    status = clGetEventProfilingInfo(profilingEvent,
+									 CL_PROFILING_COMMAND_END,
+									 sizeof(cl_ulong),
+                                     &kernelEndTime, &retBytes);
+    check_cl_error(status, "clGetEventProfilingInfo");
+    //event timing is reported in nano seconds: divide by 1e6 to get
+    //time in milliseconds
+    kernelElapsedTime_ms =  (double)(kernelEndTime - kernelStartTime) / 1E6;
     //9)read back and print results
     status = clEnqueueReadBuffer(clenv.commandQueue,
                                  devC,
@@ -170,6 +206,7 @@ int main(int argc, char** argv) {
 
     if(check_result(refC, C, EPS)) {
     	std::cout << "PASSED" << std::endl;
+    	std::cout << "Elapsed time(ms): " << kernelElapsedTime_ms << std::endl;
     } else {
     	std::cout << "FAILED" << std::endl;
     }	

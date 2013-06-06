@@ -27,7 +27,6 @@ std::vector< real_t > create_vector(int size) {
     return m;
 }
 
-
 //------------------------------------------------------------------------------
 real_t host_dot_product(const std::vector< real_t >& v1,
                         const std::vector< real_t >& v2) {
@@ -64,7 +63,7 @@ int main(int argc, char** argv) {
 #else
     const double EPS = 0.00001;
 #endif    
-    CLEnv clenv = create_clenv(argv[1], argv[2], atoi(argv[3]),
+    CLEnv clenv = create_clenv(argv[1], argv[2], atoi(argv[3]), false,
                                argv[4], argv[5], clheaderStream.str());
    
     cl_int status;

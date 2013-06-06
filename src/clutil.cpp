@@ -361,6 +361,7 @@ void print_platforms() {
 CLEnv create_clenv(const std::string& platformName,
                    const std::string& deviceType,
                    int deviceNum,
+                   bool enableProfiling,
                    const char* clSourcePath,
                    const char* kernelName, 
                    const std::string& clSourcePrefix) {
@@ -409,7 +410,10 @@ CLEnv create_clenv(const std::string& platformName,
     rt.kernel = clCreateKernel(rt.program, kernelName, &status);
     check_cl_error(status, "clCreateKernel"); 
 
-    rt.commandQueue = clCreateCommandQueue(rt.context, deviceID, 0, &status);
+    rt.commandQueue = enableProfiling ?
+                      clCreateCommandQueue(rt.context, deviceID,
+                                           CL_QUEUE_PROFILING_ENABLE, &status)
+                      : clCreateCommandQueue(rt.context, deviceID, 0, &status);
     check_cl_error(status, "clCreateCommandQueue");
 
     return rt;

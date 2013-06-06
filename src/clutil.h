@@ -29,6 +29,7 @@ void print_platforms();
 CLEnv create_clenv(const std::string& platformName,
                    const std::string& deviceType,
                    int deviceNum,
+                   bool enableProfiling,
                    const char* clSourcePath,
                    const char* kernelName, 
                    const std::string& clSourcePrefix);
