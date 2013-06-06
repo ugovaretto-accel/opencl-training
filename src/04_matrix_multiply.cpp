@@ -174,6 +174,9 @@ int main(int argc, char** argv) {
     	std::cout << "FAILED" << std::endl;
     }	
 
+    check_cl_error(clReleaseMemObject(devA), "clReleaseMemObject");
+    check_cl_error(clReleaseMemObject(devB), "clReleaseMemObject");
+    check_cl_error(clReleaseMemObject(devC), "clReleaseMemObject");
     release_clenv(clenv);
    
     return 0;

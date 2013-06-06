@@ -1,11 +1,12 @@
-//Matrix multiply example
+//Dot product; example of parallel reduciton
 //Author: Ugo Varetto
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
 #include <vector>
 #include <cmath>
-#include <sstream>
+#include <numeric>
+
 #include "clutil.h"
 
 #ifdef USE_DOUBLE
@@ -15,117 +16,25 @@ typedef float real_t;
 #endif
 
 //------------------------------------------------------------------------------
-struct CLEnv {
-	cl_context context;
-	cl_program program;
-	cl_kernel kernel;
-	cl_command_queue commandQueue;
-};
-
-//------------------------------------------------------------------------------
-CLEnv create_clenv(const std::string& platformName,
-                   const std::string& deviceType,
-                   int deviceNum,
-                   const char* clSourcePath,
-                   const char* kernelName, 
-                   const std::string& clSourcePrefix) {
-
-    CLEnv rt;
-
-	//1)create context
-    rt.context = create_cl_context(platformName, deviceType, deviceNum);
-    
-    //2)load kernel source
-    const std::string programSource = clSourcePrefix 
-                                      + "\n" 
-                                      + load_text(clSourcePath);
-    const char* src = programSource.c_str();
-    const size_t sourceLength = programSource.length();
-
-    //3)build program and create kernel
-    cl_int status;
-    rt.program = clCreateProgramWithSource(rt.context, //context
-                                           1,   //number of strings
-                                           &src, //lines
-                                           &sourceLength, // size 
-                                           &status);  // status 
-    check_cl_error(status, "clCreateProgramWithSource");
-    cl_device_id deviceID; //only a single device was selected
-    // retrieve actual device id from context
-    status = clGetContextInfo(rt.context,
-                              CL_CONTEXT_DEVICES,
-                              sizeof(cl_device_id),
-                              &deviceID, 0);
-    check_cl_error(status, "clGetContextInfo");
-    cl_int buildStatus = clBuildProgram(rt.program, 1, &deviceID, 0, 0, 0);
-    //log output if any
-    char buffer[0x10000] = "";
-    size_t len = 0;
-    status = clGetProgramBuildInfo(rt.program,
-                                   deviceID,
-                                   CL_PROGRAM_BUILD_LOG,
-                                   sizeof(buffer),
-                                   buffer,
-                                   &len);
-    check_cl_error(status, "clBuildProgramInfo");
-    if(len > 1) std::cout << "Build output: " << buffer << std::endl;
-    check_cl_error(buildStatus, "clBuildProgram");
-
-    rt.kernel = clCreateKernel(rt.program, kernelName, &status);
-    check_cl_error(status, "clCreateKernel"); 
-
-    rt.commandQueue = clCreateCommandQueue(rt.context, deviceID, 0, &status);
-    check_cl_error(status, "clCreateCommandQueue");
-
-    return rt;
-}
-
-//------------------------------------------------------------------------------
-void release_clenv(CLEnv& e) {
-    check_cl_error(clReleaseCommandQueue(e.commandQueue),
-    	                                 "clReleaseCommandQueue");
-    check_cl_error(clReleaseKernel(e.kernel), "clReleaseKernel");
-    check_cl_error(clReleaseProgram(e.program), "clReleaseProgram");
-    check_cl_error(clReleaseContext(e.context), "clReleaseContext");
-}
-
-//------------------------------------------------------------------------------
-std::vector< real_t > create_matrix(int cols, int rows) {
-	std::vector< real_t > m(cols * rows);
-	srand(time(0));
-	for(std::vector<real_t>::iterator i = m.begin();
-	    i != m.end(); ++i) *i = rand() % 10; 
-	return m;
+std::vector< real_t > create_vector(int size) {
+    std::vector< real_t > m(size);
+    srand(time(0));
+    for(std::vector<real_t>::iterator i = m.begin();
+        i != m.end(); ++i) *i = rand() % 10; 
+    return m;
 }
 
 
 //------------------------------------------------------------------------------
-void host_matmul(const std::vector< real_t >& A,
-	             const std::vector< real_t >& B,
-	             std::vector< real_t >& C, 
-	             int a_columns,
-	             int b_columns) {
-	const int rows = a_columns;
-	const int columns = b_columns;
-	for(int r = 0; r != rows; ++r) {
-		for(int c = 0; c != columns; ++c) {
-			C[r*b_columns + c] = 0;
-			for(int ic = 0; ic != a_columns; ++ic) {
-				C[r*b_columns + c] += A[r*a_columns + ic]
-				                      * B[ic*b_columns + c];
-			}
-		}
-	}
+real_t host_dot_product(const std::vector< real_t >& v1,
+                        const std::vector< real_t >& v2) {
+   return std::inner_product(v1.begin(), v1.end(), v2.begin(), real_t(0));
 }
 
 //------------------------------------------------------------------------------
-bool check_result(const std::vector< real_t >& v1,
-	              const std::vector< real_t >& v2,
-	              double eps) {
-    for(int i = 0; i != v1.size(); ++i) {
-    	if(double(std::fabs(v1[i] - v2[i])) > eps) return false;
-    }
-    return true;
+bool check_result(real_t v1, real_t v2, double eps) {
+    if(double(std::fabs(v1 - v2)) > eps) return false;
+    else return true; 
 }
 
 //------------------------------------------------------------------------------
@@ -138,9 +47,11 @@ int main(int argc, char** argv) {
                   << std::endl;
         return 0; 
     }
-    const int SIZE = 16; //16 x 16
-    const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
-    const int BLOCK_SIZE = 4; //4 x 4 tiles
+    const int SIZE = 128;
+    const size_t BYTE_SIZE = SIZE * sizeof(real_t);
+    const int BLOCK_SIZE = 16; 
+    const int REDUCED_SIZE = SIZE / BLOCK_SIZE;
+    const int REDUCED_BYTE_SIZE = REDUCED_SIZE * sizeof(real_t);
     //setup text header that will be prefixed to opencl code
     std::ostringstream clheaderStream;
     clheaderStream << "#define BLOCK_SIZE " << BLOCK_SIZE << '\n';
@@ -155,49 +66,49 @@ int main(int argc, char** argv) {
    
     cl_int status;
     //create input and output matrices
-    std::vector<real_t> A = create_matrix(SIZE, SIZE);
-    std::vector<real_t> B = create_matrix(SIZE, SIZE);
-    std::vector<real_t> C(SIZE * SIZE,real_t(0));
-    std::vector<real_t> refC(SIZE * SIZE,real_t(0));        
+    std::vector<real_t> V1 = create_vector(SIZE);
+    std::vector<real_t> V2 = create_vector(SIZE);
+    real_t hostDot = std::numeric_limits< real_t >::quiet_NaN();
+    real_t deviceDot = std::numeric_limits< real_t >::quiet_NaN();      
     
     //allocate output buffer on OpenCL device
-    cl_mem devC = clCreateBuffer(clenv.context,
-                                 CL_MEM_WRITE_ONLY,
-                                 BYTE_SIZE,
-                                 0,
-                                 &status);
+    cl_mem partialReduction = clCreateBuffer(clenv.context,
+                                             CL_MEM_WRITE_ONLY,
+                                             REDUCED_BYTE_SIZE,
+                                             0,
+                                             &status);
     check_cl_error(status, "clCreateBuffer");
 
     //allocate input buffers on OpenCL devices and copy data
-    cl_mem devA = clCreateBuffer(clenv.context,
-                                 CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                 BYTE_SIZE,
-                                 &A[0], //<-- copy data from A
-                                 &status);
+    cl_mem devV1 = clCreateBuffer(clenv.context,
+                                  CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                  BYTE_SIZE,
+                                  &V1[0], //<-- copy data from A
+                                  &status);
     check_cl_error(status, "clCreateBuffer");                              
-    cl_mem devB = clCreateBuffer(clenv.context,
-                                 CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                 BYTE_SIZE,
-                                 &B[0], //<-- copy data from B
-                                 &status);
+    cl_mem devV2 = clCreateBuffer(clenv.context,
+                                  CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                  BYTE_SIZE,
+                                  &V2[0], //<-- copy data from B
+                                  &status);
     check_cl_error(status, "clCreateBuffer");                              
 
     //set kernel parameters
     status = clSetKernelArg(clenv.kernel, //kernel
                             0,      //parameter id
                             sizeof(cl_mem), //size of parameter
-                            &devA); //pointer to parameter
-    check_cl_error(status, "clSetKernelArg(A)");
+                            &devV1); //pointer to parameter
+    check_cl_error(status, "clSetKernelArg(V1)");
     status = clSetKernelArg(clenv.kernel, //kernel
                             1,      //parameter id
                             sizeof(cl_mem), //size of parameter
-                            &devB); //pointer to parameter
-    check_cl_error(status, "clSetKernelArg(B)");
+                            &devV2); //pointer to parameter
+    check_cl_error(status, "clSetKernelArg(V2)");
     status = clSetKernelArg(clenv.kernel, //kernel
                             2,      //parameter id
                             sizeof(cl_mem), //size of parameter
-                            &devC); //pointer to parameter
-    check_cl_error(status, "clSetKernelArg(C)");
+                            &partialReduction); //pointer to parameter
+    check_cl_error(status, "clSetKernelArg(devOut)");
     status = clSetKernelArg(clenv.kernel, //kernel
                             3,      //parameter id
                             sizeof(int), //size of parameter
@@ -207,14 +118,14 @@ int main(int argc, char** argv) {
 
     //7)setup kernel launch configuration
     //total number of threads == number of array elements
-    const size_t globalWorkSize[2] = {SIZE, SIZE};
+    const size_t globalWorkSize[1] = {SIZE};
     //number of per-workgroup local threads
-    const size_t localWorkSize[2] = {BLOCK_SIZE, BLOCK_SIZE}; 
+    const size_t localWorkSize[1] = {BLOCK_SIZE}; 
 
     //8)launch kernel
     status = clEnqueueNDRangeKernel(clenv.commandQueue, //queue
                                     clenv.kernel, //kernel                                   
-                                    2, //number of dimensions for work-items
+                                    1, //number of dimensions for work-items
                                     0, //global work offset
                                     globalWorkSize, //total number of threads
                                     localWorkSize, //threads per workgroup
@@ -228,12 +139,13 @@ int main(int argc, char** argv) {
     check_cl_error(status, "clEnqueueNDRangeKernel");
     
     //9)read back and print results
+    std::vector< real_t > partialDot(REDUCED_SIZE); 
     status = clEnqueueReadBuffer(clenv.commandQueue,
                                  devC,
                                  CL_TRUE, //blocking read
                                  0, //offset
-                                 BYTE_SIZE, //byte size of data
-                                 &C[0], //destination buffer in host memory
+                                 REDUCED_BYTE_SIZE, //byte size of data
+                                 &partialDot[0], //destination buffer in host memory
                                  0, //number of events that need to
                                     //complete before transfer executed
                                  0, //list of events that need to complete
@@ -241,14 +153,19 @@ int main(int argc, char** argv) {
                                  0); //event identifying this specific operation
     check_cl_error(status, "clEnqueueReadBuffer");
     
-    host_matmul(A, B, refC, SIZE, SIZE);
+    deviceDot = std::accumulate(partialDot.begin(),
+                                partialDot.end(), real_t(0));
+    hostDot = host_dot_product(V1, V2);
 
-    if(check_result(refC, C, EPS)) {
-    	std::cout << "PASSED" << std::endl;
+    if(check_result(hostDot, deviceDot, EPS)) {
+        std::cout << "PASSED" << std::endl;
     } else {
-    	std::cout << "FAILED" << std::endl;
-    }	
+        std::cout << "FAILED" << std::endl;
+    }   
 
+    check_cl_error(clReleaseMemObject(V1), "clReleaseMemObject");
+    check_cl_error(clReleaseMemObject(V2), "clReleaseMemObject");
+    check_cl_error(clReleaseMemObject(partialReduction), "clReleaseMemObject");
     release_clenv(clenv);
    
     return 0;
