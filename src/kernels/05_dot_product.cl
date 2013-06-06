@@ -22,6 +22,7 @@ kernel void dotprod(global const real_t* v1,
     	if(cache_idx < step) {
     	    cache[cache_idx] += cache[cache_idx + step];
         }
+        barrier(CLK_LOCAL_MEM_FENCE); 
     	step /= 2;
     }
     if(cache_idx == 0) reduced[get_group_id(0)] = cache[0];
