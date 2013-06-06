@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
                   << std::endl;
         return 0; 
     }
-    const int SIZE = 128;
+    const int SIZE = 256;
     const size_t BYTE_SIZE = SIZE * sizeof(real_t);
     const int BLOCK_SIZE = 16; 
     const int REDUCED_SIZE = SIZE / BLOCK_SIZE;
@@ -112,12 +112,7 @@ int main(int argc, char** argv) {
                             sizeof(cl_mem), //size of parameter
                             &partialReduction); //pointer to parameter
     check_cl_error(status, "clSetKernelArg(devOut)");
-    status = clSetKernelArg(clenv.kernel, //kernel
-                            3,      //parameter id
-                            sizeof(int), //size of parameter
-                            &SIZE); //pointer to parameter
-    check_cl_error(status, "clSetKernelArg(SIZE)");
-
+   
 
     //7)setup kernel launch configuration
     //total number of threads == number of array elements
@@ -159,6 +154,8 @@ int main(int argc, char** argv) {
     deviceDot = std::accumulate(partialDot.begin(),
                                 partialDot.end(), real_t(0));
     hostDot = host_dot_product(V1, V2);
+
+    std::cout << deviceDot << ' ' << hostDot << std::endl;
 
     if(check_result(hostDot, deviceDot, EPS)) {
         std::cout << "PASSED" << std::endl;

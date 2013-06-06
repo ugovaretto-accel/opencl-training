@@ -7,11 +7,11 @@ typedef float real_t;
 //BLOCK_SIZE and DOUBLE are defined from outside the kernel by
 //prefixing a "#define CACHE_SIZE" and "#define DOUBLE"
 //statement from within the driver program
-kernel void dot(global const real_t* v1,
-                global const real_t* v2,
-                gobal real_t* reduced) {
+kernel void dotprod(global const real_t* v1,
+                    global const real_t* v2,
+                    global real_t* reduced) {
 
-    __local cache[BLOCK_SIZE];
+    __local real_t cache[BLOCK_SIZE];
 
     const int cache_idx = get_local_id(0);
     const int id = get_global_id(0);
@@ -24,5 +24,5 @@ kernel void dot(global const real_t* v1,
         }
     	step /= 2;
     }
-    if(cache_idx == 0) reduced[get_group_id()] = cache[0];
+    if(cache_idx == 0) reduced[get_group_id(0)] = cache[0];
 }
