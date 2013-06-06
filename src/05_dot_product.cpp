@@ -5,6 +5,9 @@
 #include <ctime>
 #include <vector>
 #include <cmath>
+#include <sstream>
+#include <limits>
+#include <algorithm>
 #include <numeric>
 
 #include "clutil.h"
@@ -141,7 +144,7 @@ int main(int argc, char** argv) {
     //9)read back and print results
     std::vector< real_t > partialDot(REDUCED_SIZE); 
     status = clEnqueueReadBuffer(clenv.commandQueue,
-                                 devC,
+                                 partialReduction,
                                  CL_TRUE, //blocking read
                                  0, //offset
                                  REDUCED_BYTE_SIZE, //byte size of data
@@ -163,8 +166,8 @@ int main(int argc, char** argv) {
         std::cout << "FAILED" << std::endl;
     }   
 
-    check_cl_error(clReleaseMemObject(V1), "clReleaseMemObject");
-    check_cl_error(clReleaseMemObject(V2), "clReleaseMemObject");
+    check_cl_error(clReleaseMemObject(devV1), "clReleaseMemObject");
+    check_cl_error(clReleaseMemObject(devV2), "clReleaseMemObject");
     check_cl_error(clReleaseMemObject(partialReduction), "clReleaseMemObject");
     release_clenv(clenv);
    
