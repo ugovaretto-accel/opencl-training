@@ -5,9 +5,14 @@
 #include <ctime>
 #include <vector>
 #include <cmath>
+#include <sstream>
 #include "clutil.h"
 
+#ifdef USE_DOUBLE
+typedef double real_t;
+#else
 typedef float real_t;
+#endif
 
 //------------------------------------------------------------------------------
 struct CLEnv {
@@ -18,12 +23,12 @@ struct CLEnv {
 };
 
 //------------------------------------------------------------------------------
-CLEnv creat_cl_rtenv(const std::string& platformName,
-                     const std::string& deviceType,
-                     int deviceNum,
-                     const char* clSourcePath,
-                     const char* kernelName, 
-                     const std::string& clSourcePrefix) {
+CLEnv create_clenv(const std::string& platformName,
+                   const std::string& deviceType,
+                   int deviceNum,
+                   const char* clSourcePath,
+                   const char* kernelName, 
+                   const std::string& clSourcePrefix) {
 
     CLEnv rt;
 
@@ -76,7 +81,7 @@ CLEnv creat_cl_rtenv(const std::string& platformName,
 }
 
 //------------------------------------------------------------------------------
-void release_cl_rtenv(CLEnv& e) {
+void release_clenv(CLEnv& e) {
     check_cl_error(clReleaseCommandQueue(e.commandQueue),
     	                                 "clReleaseCommandQueue");
     check_cl_error(clReleaseKernel(e.kernel), "clReleaseKernel");
@@ -133,17 +138,22 @@ int main(int argc, char** argv) {
                   << std::endl;
         return 0; 
     }
-    const double EPS = 0.001;
-    const int SIZE = 4; //16 x 16
+    const int SIZE = 16; //16 x 16
     const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
-    const int CACHE_SIZE = 1; //4 x 4 tiles
-    cl_int status;
-    CLEnv clenv = creat_cl_rtenv(argv[1], argv[2], atoi(argv[3]),
-                                 argv[4], argv[5],
-                                 "#define CACHE_ROWS 4\n"
-                                 "#define CACHE_COLUMNS 4\n");
+    const int BLOCK_SIZE = 4; //4 x 4 tiles
+    //setup text header that will be prefixed to opencl code
+    std::ostringstream clheaderStream;
+    clheaderStream << "#define BLOCK_SIZE " << BLOCK_SIZE << '\n';
+#ifdef USE_DOUBLE    
+    clheaderStream << "#define DOUBLE\n";
+    const double EPS = 0.000000001;
+#else
+    const double EPS = 0.00001;
+#endif    
+    CLEnv clenv = create_clenv(argv[1], argv[2], atoi(argv[3]),
+                               argv[4], argv[5], clheaderStream.str());
    
-
+    cl_int status;
     //create input and output matrices
     std::vector<real_t> A = create_matrix(SIZE, SIZE);
     std::vector<real_t> B = create_matrix(SIZE, SIZE);
@@ -193,18 +203,13 @@ int main(int argc, char** argv) {
                             sizeof(int), //size of parameter
                             &SIZE); //pointer to parameter
     check_cl_error(status, "clSetKernelArg(SIZE)");
-     status = clSetKernelArg(clenv.kernel, //kernel
-                            4,      //parameter id
-                            sizeof(int), //size of parameter
-                            &SIZE); //pointer to parameter
-    check_cl_error(status, "clSetKernelArg(SIZE)");
 
 
     //7)setup kernel launch configuration
     //total number of threads == number of array elements
     const size_t globalWorkSize[2] = {SIZE, SIZE};
     //number of per-workgroup local threads
-    const size_t localWorkSize[2] = {CACHE_SIZE, CACHE_SIZE}; 
+    const size_t localWorkSize[2] = {BLOCK_SIZE, BLOCK_SIZE}; 
 
     //8)launch kernel
     status = clEnqueueNDRangeKernel(clenv.commandQueue, //queue
@@ -244,7 +249,7 @@ int main(int argc, char** argv) {
     	std::cout << "FAILED" << std::endl;
     }	
 
-    release_cl_rtenv(clenv);
+    release_clenv(clenv);
    
     return 0;
 }

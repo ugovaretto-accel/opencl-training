@@ -4,8 +4,9 @@ typedef double real_t;
 #else
 typedef float real_t;
 #endif
+
 //square matrices only
-//TILE_SIZE and DOUBLE are defined from outside the kernel
+//BLOCK_SIZE and DOUBLE are defined from outside the kernel
 //by prefixing this code with proper #define statements from within
 //the driver program;
 //launch with grid = [columns X rows]
@@ -44,7 +45,7 @@ real_t get_matrix_element(global const real_t* m, //matrix
 }
 
 //------------------------------------------------------------------------------
-//work item size must be exactly TILE_SIZE x TILE_SIZE
+//work item size must be exactly BLOCK_SIZE x BLOCK_SIZE
 kernel void block_matmul(global const real_t* A,
                          global const real_t* B,
                          global real_t* C,
@@ -54,31 +55,31 @@ kernel void block_matmul(global const real_t* A,
     const int col = get_local_id(0);
     const int blockRow = get_group_id(1);
     const int blockCol = get_group_id(0);
-	__local real_t a[TILE_SIZE][TILE_SIZE];
-	__local real_t b[TILE_SIZE][TILE_SIZE]; 
+	__local real_t a[BLOCK_SIZE][BLOCK_SIZE];
+	__local real_t b[BLOCK_SIZE][BLOCK_SIZE]; 
     real_t out = 0;
-    //iterate over rows of block in a and columns of blocks in b
-    for( int blockId = 0; blockId != columns / TILE_SIZE; ++blockId ) {
-        //copy data into shared memory
+    //iterate over rows of blocks in a and columns of blocks in b
+    for( int blockId = 0; blockId < columns / BLOCK_SIZE; ++blockId ) {
+    	//copy data into shared memory
         a[row ][col] = 
-        	get_matrix_element(A, TILE_SIZE,
+        	get_matrix_element(A, BLOCK_SIZE,
         	                   blockId, // <-- column id of block
         	                   blockRow,// <-- row id of block
         	                   col, row, columns);
         b[row ][col] = 
-        	get_matrix_element(B, TILE_SIZE,
+        	get_matrix_element(B, BLOCK_SIZE,
         	                   blockCol, // <-- column id of block
         	                   blockId,  // <-- row id of block
         	                   col, row, columns );
         // barrier required to guarantee that data are computed before next step
         // where a thread accesses data computed by other threads
-        barrier(CLK_LOCAL_MEM_FENCE) 
-        for( int k = 0; k != TILE_SIZE; ++k ) {
+        barrier(CLK_LOCAL_MEM_FENCE); 
+        for( int k = 0; k != BLOCK_SIZE; ++k ) {
             out += a[ row ][ k ] * b[ k ][ col ];           
         }
-        barrier(CLK_LOCAL_MEM_FENCE)  
+        barrier(CLK_LOCAL_MEM_FENCE);  
     }
-    C[(blockRow * TILE_SIZE + row) * columns
-       + blockCol * TILE_SIZE + col ] = out;     
+    C[(blockRow * BLOCK_SIZE + row) * columns
+       + blockCol * BLOCK_SIZE + col ] = out;     
 }
 
