@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
         std::cout << "usage: " << argv[0]
                   << " <platform name> <device type = default | cpu | gpu "
                      "| acc | all>  <device num> <OpenCL source file path>"
-                     " <kernel name> <size> <wgroup size>"
+                     " <kernel name> <matrix size> <workgroup size>"
                   << std::endl;
         return 0; 
     }
