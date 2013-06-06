@@ -63,10 +63,10 @@ int main(int argc, char** argv) {
                   << std::endl;
         return 0; 
     }
-    const int SIZE = atoi[6];
+    const int SIZE = atoi(argv[6]);
     const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
-    const int BLOCK_SIZE = atoi[7]; //4 x 4 tiles
-    if( SIZE < 1 || BLOCK_SIZE < 1 || SIZE % BLOCK_SIZE != 0) {
+    const int BLOCK_SIZE = atoi(argv[7]); //4 x 4 tiles
+    if( SIZE < 1 || BLOCK_SIZE < 1 || (SIZE % BLOCK_SIZE) != 0) {
     	std::cerr << "ERROR - size and block size *must* be greater than zero "
     	             "and size *must* be evenly divsible by block size"
     	          << std::endl;
@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
     //8)launch kernel
     //to make sure there are no pending commands in the queue do wait
     //for any commands to finish execution
-    cl_status = clFinish(clenv.commandQueue);
+    status = clFinish(clenv.commandQueue);
     check_cl_error(status, "clFinish");
     cl_event profilingEvent;
     status = clEnqueueNDRangeKernel(clenv.commandQueue, //queue
@@ -159,16 +159,16 @@ int main(int argc, char** argv) {
                                        //complete before kernel executed
                                     0, //list of events that need to complete
                                        //before kernel executed
-                                    profilingEvent); //event object 
+                                    &profilingEvent); //event object 
                                                      //identifying this
                                                      //particular kernel
                                                      //execution instance
     check_cl_error(status, "clEnqueueNDRangeKernel");
-    cl_status = clFinish(clenv.commandQueue); //ensure kernel execution is
+    status = clFinish(clenv.commandQueue); //ensure kernel execution is
     //terminated; used for timing purposes only; there is no need to enforce
     //termination when issuing a subsequent blocking data transfer operation
     check_cl_error(status, "clFinish");
-    status = clWaitForEvents(1, &profilingEvent)
+    status = clWaitForEvents(1, &profilingEvent);
     check_cl_error(status, "clWaitForEvents");
     cl_ulong kernelStartTime = cl_ulong(0);
     cl_ulong kernelEndTime   = cl_ulong(0);
