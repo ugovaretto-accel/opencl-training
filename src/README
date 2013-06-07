@@ -1,6 +1,14 @@
 C++ source code
 ===============
 
+Code tested on NVIDIA K20x, AMD Opteron, Intel SandyBridge and Xeon Phi with
+OpenCL 1.1(NVIDIA) and OpenCL 1.2(all the others) drivers.
+
+On most Linux systems(other than Cray) the OpenCL includes are under 
+/usr/include and libOpenCL is in /usr/lib. libOpenCL will use the information
+found under /etc/OpenCL to select the requested OpenCL implementation at
+run-time. 
+
 Cray XK-7 with CUDA 5 installed
 -------------------------------
 
@@ -10,7 +18,7 @@ module load cudatoolkit
 
 g++ ../src/02_create_context.cpp \
   -I/opt/nvidia/cudatoolkit/5.0.35.102/include \
-  -L//opt/cray/nvidia/default/lib64 
+  -L//opt/cray/nvidia/default/lib64 \
   -lOpenCL
 
 Run:
