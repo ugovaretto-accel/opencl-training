@@ -1,3 +1,5 @@
+//set elements of array to value
+//Author: Ugo Varetto
 typedef float real_t;
 kernel void arrayset(global real_t* outputArray,
 	                 real_t value) {

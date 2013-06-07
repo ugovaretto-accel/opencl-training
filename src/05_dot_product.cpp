@@ -74,6 +74,8 @@ int main(int argc, char** argv) {
     real_t deviceDot = std::numeric_limits< real_t >::quiet_NaN();      
     
     //allocate output buffer on OpenCL device
+    //the partialReduction array contains a sequence of dot products
+    //computed on sub-arrays of size BLOCK_SIZE
     cl_mem partialReduction = clCreateBuffer(clenv.context,
                                              CL_MEM_WRITE_ONLY,
                                              REDUCED_BYTE_SIZE,
@@ -85,13 +87,13 @@ int main(int argc, char** argv) {
     cl_mem devV1 = clCreateBuffer(clenv.context,
                                   CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                   BYTE_SIZE,
-                                  &V1[0], //<-- copy data from A
+                                  &V1[0], //<-- copy data from V1
                                   &status);
     check_cl_error(status, "clCreateBuffer");                              
     cl_mem devV2 = clCreateBuffer(clenv.context,
                                   CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                   BYTE_SIZE,
-                                  &V2[0], //<-- copy data from B
+                                  &V2[0], //<-- copy data from V2
                                   &status);
     check_cl_error(status, "clCreateBuffer");                              
 

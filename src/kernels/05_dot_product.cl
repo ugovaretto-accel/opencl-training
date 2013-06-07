@@ -1,11 +1,18 @@
+//Partial parallel dot product.
+//Author: Ugo Varetto
+
+//Subdivides input array into sub-arrays and
+//performs dot product on each sub-array; the dot product of each sub-array
+//is copied into the output buffer; a final reduction step has to be performed
+//on the host.
 #ifdef DOUBLE
 #pragma OPENCL EXTENSION cl_khr_fp64: enable
 typedef double real_t;
 #else
 typedef float real_t;
 #endif
-//BLOCK_SIZE and DOUBLE are defined from outside the kernel by
-//prefixing a "#define BLOCK_SIZE" and "#define DOUBLE"
+//BLOCK_SIZE and DOUBLE are defined from outside the kernel by prefixing
+//the source code witha a "#define BLOCK_SIZE" and "#define DOUBLE"
 //statement from within the driver program
 kernel void dotprod(global const real_t* v1,
                     global const real_t* v2,
@@ -33,7 +40,7 @@ kernel void dotprod(global const real_t* v1,
         }
         //need to synchronize execution to make sure that
         //element at position cache[cache_idx + step]
-        //is available
+        //is up to date
         barrier(CLK_LOCAL_MEM_FENCE); 
     	step /= 2;
     }

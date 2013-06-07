@@ -1,3 +1,17 @@
+//Matrix - matrix multiply: trivial and block version; #defines
+//have to be set from the driver program for this code to compile;
+//only square matrices supported
+//Author: Ugo Varetto
+
+//BLOCK_SIZE and DOUBLE are defined from outside the kernel
+//by prefixing this code with proper #define statements from within
+//the driver program;
+//launch with 2d grid = [size, size]
+//in order to take advantage of caching and coalescing the
+//elements which are contiguous in memory must map to the
+//fastest moving index i.e. for row major matrices the column
+//index must map to the x coordinate of the launch grid
+
 #ifdef DOUBLE
 #pragma OPENCL EXTENSION cl_khr_fp64: enable
 typedef double real_t;
@@ -5,17 +19,9 @@ typedef double real_t;
 typedef float real_t;
 #endif
 
-//square matrices only
-//BLOCK_SIZE and DOUBLE are defined from outside the kernel
-//by prefixing this code with proper #define statements from within
-//the driver program;
-//launch with grid = [columns X rows]
-//in order to take advantage of caching and coalescing the
-//elements which are contiguous in memory must map to the
-//fastest moving index i.e. for row major matrices the column
-//index must map to the x coordinate of the launch grid
 
 //------------------------------------------------------------------------------
+//trivial matrix-matrix multiply one thread per output element 
 kernel void matmul(global const real_t* A,
                    global const real_t* B,
                    global real_t* C,
@@ -30,8 +36,10 @@ kernel void matmul(global const real_t* A,
 }
 
 //------------------------------------------------------------------------------
+//return matrix element given matrix size, block size, block coordinates
+//and local (row,column) coordinates 
 real_t get_matrix_element(global const real_t* m, //matrix
-                          int tileSize,    //tile size
+                          int blockSize,   //block size
                           int blockCol,    //column index of output block 
                           int blockRow,    //row index of output row
                           int col,         //local column index of block element
@@ -39,12 +47,14 @@ real_t get_matrix_element(global const real_t* m, //matrix
                           int num_columns  //number of columns of matrix 'm'
                           ) {                                           
   
-    return m[( blockRow * tileSize + row ) * num_columns
-           + blockCol * tileSize + col];
+    return m[( blockRow * blockSize + row ) * num_columns
+           + blockCol * blockSize + col];
 
 }
 
 //------------------------------------------------------------------------------
+//block matrix multiply; elements are first copied into local memory before
+//processing
 //work item size must be exactly BLOCK_SIZE x BLOCK_SIZE
 kernel void block_matmul(global const real_t* A,
                          global const real_t* B,

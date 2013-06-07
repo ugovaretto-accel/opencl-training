@@ -1,3 +1,6 @@
+//set elements of array to value;
+//error introduced on purpose to show output
+//of OpenCL compiler
 typedef float real_t;
 kernel void arrayset(global real_t* outputArray,
 	                 real_t value) {

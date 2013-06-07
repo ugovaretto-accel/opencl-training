@@ -126,6 +126,7 @@ cl_context create_cl_context(const std::string& platformName,
 
 
 //------------------------------------------------------------------------------
+//read text from file and return it as a string
 std::string load_text(const char* filepath) {
     std::ifstream src(filepath);
     if(!src) {
@@ -148,7 +149,7 @@ int main(int argc, char** argv) {
         return 0; 
     }
     std::string platformName = argv[ 1 ];
-    std::string deviceType = argv[2]; // use stringified enum
+    std::string deviceType = argv[2]; 
     int deviceNum = atoi(argv[3]);
 
     //1)create context
@@ -165,7 +166,7 @@ int main(int argc, char** argv) {
     cl_int status;
     cl_program program = clCreateProgramWithSource(ctx, //context
                                                    1,   //number of strings
-                                                   &src, //lines
+                                                   &src, //source
                                                    &sourceLength, // size 
                                                    &status);  // status 
     check_cl_error(status, "clCreateProgramWithSource");
@@ -257,7 +258,8 @@ int main(int argc, char** argv) {
                                  CL_TRUE, //blocking read
                                  0, //offset
                                  ARRAY_BYTE_LENGTH, //byte size of data
-                                 &hostArray[0], //destination buffer in host memory
+                                 &hostArray[0], //destination buffer in host
+                                                // memory
                                  0, //number of events that need to
                                     //complete before transfer executed
                                  0, //list of events that need to complete

@@ -31,7 +31,7 @@ void CL_CALLBACK context_callback(const char * errInfo,
 //------------------------------------------------------------------------------
 // returns context associated with single device only,
 // to make it support multiple devices, a list of
-// <device type, device num> pairs is required
+// <device type, device num> pairs woudl be required
 cl_context create_cl_context(const std::string& platformName,
                              const std::string& deviceTypeName,
                              int deviceNum) {
