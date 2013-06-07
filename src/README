@@ -26,9 +26,9 @@ Run:
 salloc -N1
 aprun ./a.out ...
 
-In case the AMD-AMP-SDK is installed on the machine it is
+In case the AMD-APP-SDK is installed on the machine it is
 possible to access two OpenCL platforms (CPU and GPU) by
-loading the AMD-AMP-SDK module before running the executable.
+loading the AMD-APP-SDK module before running the executable.
 
 
 
