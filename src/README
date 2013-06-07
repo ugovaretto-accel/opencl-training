@@ -1,1 +1,27 @@
 C++ source code
+===============
+
+Cray XK-7 with CUDA 5 installed
+-------------------------------
+
+Compilation:
+
+module load cudatoolkit
+
+g++ ../src/02_create_context.cpp \
+  -I/opt/nvidia/cudatoolkit/5.0.35.102/include \
+  -L//opt/cray/nvidia/default/lib64 
+  -lOpenCL
+
+Run:
+
+salloc -N1
+aprun ./a.out ...
+
+In case the AMD-AMP-SDK is installed on the machine it is
+possible to access two OpenCL platforms (CPU and GPU) by
+loading the AMD-AMP-SDK module before running the executable.
+
+
+
+
