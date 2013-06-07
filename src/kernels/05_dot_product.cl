@@ -14,9 +14,9 @@ typedef float real_t;
 //BLOCK_SIZE and DOUBLE are defined from outside the kernel by prefixing
 //the source code witha a "#define BLOCK_SIZE" and "#define DOUBLE"
 //statement from within the driver program
-kernel void dotprod(global const real_t* v1,
-                    global const real_t* v2,
-                    global real_t* reduced) {
+__kernel void dotprod(__global const real_t* v1,
+                      __global const real_t* v2,
+                      __global real_t* reduced) {
 
     __local real_t cache[BLOCK_SIZE];
 

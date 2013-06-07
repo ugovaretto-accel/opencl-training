@@ -22,9 +22,9 @@ typedef float real_t;
 
 //------------------------------------------------------------------------------
 //trivial matrix-matrix multiply one thread per output element 
-kernel void matmul(global const real_t* A,
-                   global const real_t* B,
-                   global real_t* C,
+__kernel void matmul(__global const real_t* A,
+                     __global const real_t* B,
+                     __global real_t* C,
                    int columns) {
     const int col = get_global_id(0);
     const int row = get_global_id(1);
@@ -38,7 +38,7 @@ kernel void matmul(global const real_t* A,
 //------------------------------------------------------------------------------
 //return matrix element given matrix size, block size, block coordinates
 //and local (row,column) coordinates 
-real_t get_matrix_element(global const real_t* m, //matrix
+real_t get_matrix_element(__global const real_t* m, //matrix
                           int blockSize,   //block size
                           int blockCol,    //column index of output block 
                           int blockRow,    //row index of output row
@@ -56,10 +56,10 @@ real_t get_matrix_element(global const real_t* m, //matrix
 //block matrix multiply; elements are first copied into local memory before
 //processing
 //work item size must be exactly BLOCK_SIZE x BLOCK_SIZE
-kernel void block_matmul(global const real_t* A,
-                         global const real_t* B,
-                         global real_t* C,
-                         int columns) {
+__kernel void block_matmul(__global const real_t* A,
+                           __global const real_t* B,
+                           __global real_t* C,
+                           int columns) {
 
     const int row = get_local_id(1);
     const int col = get_local_id(0);
@@ -70,17 +70,17 @@ kernel void block_matmul(global const real_t* A,
     real_t out = 0;
     //iterate over rows of blocks in a and columns of blocks in b
     for( int blockId = 0; blockId < columns / BLOCK_SIZE; ++blockId ) {
-    	//copy data into shared memory
+    //copy data into shared memory
         a[row ][col] = 
-        	get_matrix_element(A, BLOCK_SIZE,
-        	                   blockId, // <-- column id of block
-        	                   blockRow,// <-- row id of block
-        	                   col, row, columns);
+    	   get_matrix_element(A, BLOCK_SIZE,
+    	                      blockId, // <-- column id of block
+    	                      blockRow,// <-- row id of block
+    	                      col, row, columns);
         b[row ][col] = 
-        	get_matrix_element(B, BLOCK_SIZE,
-        	                   blockCol, // <-- column id of block
-        	                   blockId,  // <-- row id of block
-        	                   col, row, columns );
+    	   get_matrix_element(B, BLOCK_SIZE,
+    	                      blockCol, // <-- column id of block
+    	                      blockId,  // <-- row id of block
+    	                      col, row, columns );
         // barrier required to guarantee that data are computed before next step
         // where a thread accesses data computed by other threads
         barrier(CLK_LOCAL_MEM_FENCE); 
