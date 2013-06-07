@@ -2,7 +2,7 @@ C++ source code
 ===============
 
 Code tested on NVIDIA K20x, AMD Opteron, Intel SandyBridge and Xeon Phi with
-OpenCL 1.1(NVIDIA) and OpenCL 1.2(all the others) drivers.
+OpenCL 1.1(NVIDIA and AMD) and OpenCL 1.2(Intel) drivers.
 
 On most Linux systems(other than Cray) the OpenCL includes are under 
 /usr/include and libOpenCL is in /usr/lib. libOpenCL will use the information
@@ -31,5 +31,57 @@ possible to access two OpenCL platforms (CPU and GPU) by
 loading the AMD-APP-SDK module before running the executable.
 
 
+Output of 01_device_query example:
 
+
+***************************************************
+Number of platforms: 2
+
+-----------
+Platform 0
+-----------
+Vendor: NVIDIA Corporation
+Profile: FULL_PROFILE
+Version: OpenCL 1.1 CUDA 4.2.1
+Name: NVIDIA CUDA
+Extensions: cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll 
+Number of devices: 1
+Device 0
+  Type: GPU 
+  Name: Tesla K20X
+  Version: OpenCL 1.1 CUDA
+  Vendor: NVIDIA Corporation
+  Profile: FULL_PROFILE
+  Compute units: 14
+  Max work item dim: 3
+  Work item sizes: 1024 1024 64
+  Max clock freq: 732 MHz
+  Global memory: 6039339008 bytes
+  Local memory: 49152 bytes
+
+===================================================
+
+-----------
+Platform 1
+-----------
+Vendor: Advanced Micro Devices, Inc.
+Profile: FULL_PROFILE
+Version: OpenCL 1.1 AMD-APP-SDK-v2.5 (684.213)
+Name: AMD Accelerated Parallel Processing
+Extensions: cl_khr_icd cl_amd_event_callback cl_amd_offline_devices
+Number of devices: 1
+Device 0
+  Type: CPU 
+  Name: AMD Opteron(TM) Processor 6272                 
+  Version: OpenCL 1.1 AMD-APP-SDK-v2.5 (684.213)
+  Vendor: AuthenticAMD
+  Profile: FULL_PROFILE
+  Compute units: 16
+  Max work item dim: 3
+  Work item sizes: 1024 1024 1024
+  Max clock freq: 2100 MHz
+  Global memory: 33878683648 bytes
+  Local memory: 32768 bytes
+
+===================================================
 
