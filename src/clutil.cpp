@@ -364,51 +364,62 @@ CLEnv create_clenv(const std::string& platformName,
                    bool enableProfiling,
                    const char* clSourcePath,
                    const char* kernelName, 
-                   const std::string& clSourcePrefix) {
+                   const std::string& clSourcePrefix, 
+                   const std::string& buildOptions) {
 
     CLEnv rt;
+    cl_int status;
+    cl_device_id deviceID;
 
     //1)create context
     rt.context = create_cl_context(platformName, deviceType, deviceNum);
-    
-    //2)load kernel source
-    const std::string programSource = clSourcePrefix 
-                                      + "\n" 
-                                      + load_text(clSourcePath);
-    const char* src = programSource.c_str();
-    const size_t sourceLength = programSource.length();
-
-    //3)build program and create kernel
-    cl_int status;
-    rt.program = clCreateProgramWithSource(rt.context, //context
-                                           1,   //number of strings
-                                           &src, //lines
-                                           &sourceLength, // size 
-                                           &status);  // status 
-    check_cl_error(status, "clCreateProgramWithSource");
-    cl_device_id deviceID; //only a single device was selected
-    // retrieve actual device id from context
+    //only a single device was selected
+    //retrieve actual device id from context
     status = clGetContextInfo(rt.context,
                               CL_CONTEXT_DEVICES,
                               sizeof(cl_device_id),
                               &deviceID, 0);
     check_cl_error(status, "clGetContextInfo");
-    cl_int buildStatus = clBuildProgram(rt.program, 1, &deviceID, 0, 0, 0);
-    //log output if any
-    char buffer[0x10000] = "";
-    size_t len = 0;
-    status = clGetProgramBuildInfo(rt.program,
-                                   deviceID,
-                                   CL_PROGRAM_BUILD_LOG,
-                                   sizeof(buffer),
-                                   buffer,
-                                   &len);
-    check_cl_error(status, "clBuildProgramInfo");
-    if(len > 1) std::cout << "Build output: " << buffer << std::endl;
-    check_cl_error(buildStatus, "clBuildProgram");
+    
+    //2)load kernel source
+    if(clSourcePath != 0) {
+        const std::string programSource = clSourcePrefix 
+                                          + "\n" 
+                                          + load_text(clSourcePath);
+        const char* src = programSource.c_str();
+        const size_t sourceLength = programSource.length();
 
-    rt.kernel = clCreateKernel(rt.program, kernelName, &status);
-    check_cl_error(status, "clCreateKernel"); 
+        //3)build program and create kernel
+        
+        rt.program = clCreateProgramWithSource(rt.context, //context
+                                               1,   //number of strings
+                                               &src, //lines
+                                               &sourceLength, // size 
+                                               &status);  // status 
+        check_cl_error(status, "clCreateProgramWithSource");
+        
+        cl_int buildStatus = buildOptions.size() ?
+                             clBuildProgram(rt.program, 1, &deviceID,
+                                buildOptions.c_str(), 0, 0)
+                             : clBuildProgram(rt.program, 1, &deviceID,
+                                0, 0, 0);
+        //log output if any
+        char buffer[0x10000] = "";
+        size_t len = 0;
+        status = clGetProgramBuildInfo(rt.program,
+                                       deviceID,
+                                       CL_PROGRAM_BUILD_LOG,
+                                       sizeof(buffer),
+                                       buffer,
+                                       &len);
+        check_cl_error(status, "clBuildProgramInfo");
+        if(len > 1) std::cout << "Build output: " << buffer << std::endl;
+        check_cl_error(buildStatus, "clBuildProgram");
+        if(kernelName != 0) {
+            rt.kernel = clCreateKernel(rt.program, kernelName, &status);
+            check_cl_error(status, "clCreateKernel"); 
+        }
+    }
 
     rt.commandQueue = enableProfiling ?
                       clCreateCommandQueue(rt.context, deviceID,

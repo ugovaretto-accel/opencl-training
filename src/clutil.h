@@ -26,11 +26,16 @@ cl_context create_cl_context(const std::string& platformName,
 std::string load_text(const char* filepath);
 cl_device_id get_device_id(cl_context ctx);
 void print_platforms();
+//the following function only fills the requested CLEnv fields:
+//context and command queue are always reaturned; program and
+//kernel are returned only if the source path and kernel name are
+//not NULL
 CLEnv create_clenv(const std::string& platformName,
                    const std::string& deviceType,
                    int deviceNum,
-                   bool enableProfiling,
-                   const char* clSourcePath,
-                   const char* kernelName, 
-                   const std::string& clSourcePrefix);
+                   bool enableProfiling = false,
+                   const char* clSourcePath = 0,
+                   const char* kernelName = 0, 
+                   const std::string& clSourcePrefix = std::string(),
+                   const std::string& buildOptions = std::string());
 void release_clenv(CLEnv& e);
