@@ -1,11 +1,10 @@
-//Load and execute a simple kernel which sets each array element to a specific
-//value
+//Minimal OpenCL compiler.
 //Author: Ugo Varetto
-//Launch as e.g.:
-// ./03 "AMD Accelerated Parallel Processing" default 0 \
-//       src/kernels/03_kernel.cl arrayset
-//Also try with 03_kernel_wrong.cl to see error output from OpenCL compiler 
 
+//Translates from OpenCL source code to a format suitable for loading
+//through clCreateProgramWithBinary e.g. PTX asm for NVIDIA devices and 
+//actual binary for CPUs.
+//Launch with no parameters to print usage information.
 
 #include <iostream>
 #include <fstream>
@@ -23,11 +22,13 @@
 
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
-    if(argc < 4) {
+    if(argc < 5) {
         std::cout << "usage: " << argv[0]
                   << " <platform name>"
                      " <device type = default | cpu | gpu | acc | all>"
-                     " <OpenCL source file path>"            
+                     " <OpenCL source file path>"
+                     " <output file name>"
+                     " [build options passed to CL compiler e.g. -D...]"           
                   << std::endl;
         return 0; 
     }
@@ -35,7 +36,7 @@ int main(int argc, char** argv) {
     std::string platformName = argv[ 1 ];
     std::string deviceType = argv[2]; 
     std::string options;
-    for(int a = 4; a != argc; ++a) {
+    for(int a = 5; a != argc; ++a) {
         options += argv[a];
     }
 
@@ -85,7 +86,6 @@ int main(int argc, char** argv) {
                               sizeof(size_t),
                               &programSize, //only a single device supported
                               0);
-    std::cout << programSize << std::endl;
     check_cl_error(status, "clGetProgramInfo");
     char** binaries = 0;
     binaries = new char*[1];
@@ -93,19 +93,21 @@ int main(int argc, char** argv) {
     size_t returnedSize = 0; 
     status = clGetProgramInfo(program,
                               CL_PROGRAM_BINARIES,
-                              sizeof(size_t),
+                              sizeof(char *), //number of devices x pointer size
                               binaries,
                               0);
                 
     check_cl_error(status, "clGetProgramInfo");
-    const std::string outputFileName(std::string(argv[3]) + ".clbin");
-    std::ofstream out(outputFileName.c_str(), std::ios::out | std::ios::binary);
+    std::ofstream out(argv[4], std::ios::out | std::ios::binary);
     if(!out) {
         std::cerr << "Error opening output file "
-                  << outputFileName << std::endl;
+                  << argv[4] << std::endl;
         exit(EXIT_FAILURE);          
     }
-    out.write(binaries[0], programSize);
+    if(!out.write(binaries[0], programSize) ) {
+        std::cerr << "Error writing to file" << argv[4] << std::endl;
+        exit(EXIT_FAILURE);
+    }
     delete [] binaries[0];
     delete [] binaries;
     //release resources
