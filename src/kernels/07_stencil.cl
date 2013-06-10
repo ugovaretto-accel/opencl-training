@@ -30,8 +30,6 @@ __kernel void filter(const __global real_t* src,
     out[coord.y * size + coord.x] = e;
 }
 
-
-
 //------------------------------------------------------------------------------
 __constant sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE
                                | CLK_ADDRESS_CLAMP
