@@ -61,14 +61,14 @@ void host_apply_stencil(const std::vector< real_t >& in,
 }
 
 //------------------------------------------------------------------------------
-void device_apply_stencil(const std::vector< real_t >& in,
-                          int size, 
-                          const std::vector< real_t >& filter,
-                          int filterSize,
-                          std::vector< real_t >& out,
-                          const CLEnv& clenv,
-                          const size_t globalWorkSize[2],
-                          const size_t localWorkSize[2]) {
+double device_apply_stencil(const std::vector< real_t >& in,
+                            int size, 
+                            const std::vector< real_t >& filter,
+                            int filterSize,
+                            std::vector< real_t >& out,
+                            const CLEnv& clenv,
+                            const size_t globalWorkSize[2],
+                            const size_t localWorkSize[2]) {
 
     const int FILTER_SIZE = filterSize;
     const int FILTER_BYTE_SIZE = sizeof(real_t) * FILTER_SIZE * FILTER_SIZE;
@@ -128,7 +128,8 @@ void device_apply_stencil(const std::vector< real_t >& in,
 
 
     //launch kernel
-    status = clEnqueueNDRangeKernel(clenv.commandQueue, //queue
+    const double timems = timeEnqueueNDRangeKernel(
+                                    clenv.commandQueue, //queue
                                     clenv.kernel, //kernel                                   
                                     2, //number of dimensions for work-items
                                     0, //global work offset
@@ -136,10 +137,8 @@ void device_apply_stencil(const std::vector< real_t >& in,
                                     localWorkSize, //threads per workgroup
                                     0, //number of events that need to
                                        //complete before kernel executed
-                                    0, //list of events that need to complete
-                                       //before kernel executed
-                                    0); //event object identifying this
-                                        //particular kernel execution instance
+                                    0); //list of events that need to complete
+                                        //before kernel executed
 
     check_cl_error(status, "clEnqueueNDRangeKernel");
     
@@ -159,18 +158,19 @@ void device_apply_stencil(const std::vector< real_t >& in,
     check_cl_error(clReleaseMemObject(devIn), "clReleaseMemObject");
     check_cl_error(clReleaseMemObject(devFilter), "clReleaseMemObject");
     check_cl_error(clReleaseMemObject(devOut), "clReleaseMemObject");
+    return timems;
 }
 
 
 //------------------------------------------------------------------------------
-void device_apply_stencil_image(const std::vector< real_t >& in,
-                                int size, 
-                                const std::vector< real_t >& filter,
-                                int filterSize,
-                                std::vector< real_t >& out,
-                                const CLEnv& clenv,
-                                const size_t globalWorkSize[2],
-                                const size_t localWorkSize[2]) {
+double device_apply_stencil_image(const std::vector< real_t >& in,
+                                  int size, 
+                                  const std::vector< real_t >& filter,
+                                  int filterSize,
+                                  std::vector< real_t >& out,
+                                  const CLEnv& clenv,
+                                  const size_t globalWorkSize[2],
+                                  const size_t localWorkSize[2]) {
 
     const int FILTER_SIZE = filterSize;
     const int FILTER_BYTE_SIZE = sizeof(real_t) * FILTER_SIZE * FILTER_SIZE;
@@ -229,7 +229,8 @@ void device_apply_stencil_image(const std::vector< real_t >& in,
 
 
     //launch kernel
-    status = clEnqueueNDRangeKernel(clenv.commandQueue, //queue
+    const double timems = timeEnqueueNDRangeKernel(
+                                    clenv.commandQueue, //queue
                                     clenv.kernel, //kernel                                   
                                     2, //number of dimensions for work-items
                                     0, //global work offset
@@ -237,10 +238,8 @@ void device_apply_stencil_image(const std::vector< real_t >& in,
                                     localWorkSize, //threads per workgroup
                                     0, //number of events that need to
                                        //complete before kernel executed
-                                    0, //list of events that need to complete
-                                       //before kernel executed
-                                    0); //event object identifying this
-                                        //particular kernel execution instance
+                                    0); //list of events that need to complete
+                                        //before kernel executed
 
     check_cl_error(status, "clEnqueueNDRangeKernel");
     
@@ -258,6 +257,7 @@ void device_apply_stencil_image(const std::vector< real_t >& in,
                                  0); //event identifying this specific operation
     check_cl_error(status, "clEnqueueReadBuffer");
     check_cl_error(clReleaseMemObject(devOut), "clReleaseMemObject");
+    return timems;
 }
 
 
@@ -314,7 +314,7 @@ int main(int argc, char** argv) {
     CLEnv clenv = create_clenv(argv[1], //platform name
                                argv[2], //device type
                                atoi(argv[3]), //device id
-                               false, //profiling
+                               true, //profiling
                                argv[4], //cl source code
                                argv[5], //kernel name
                                "", //source code prefix text
@@ -328,17 +328,19 @@ int main(int argc, char** argv) {
     std::vector<real_t> out(SIZE * SIZE,real_t(0));
     std::vector<real_t> refOut(SIZE * SIZE,real_t(0));        
     
+    double timems = 0;
     if(image) {
-        device_apply_stencil_image(in, SIZE, filter, FILTER_SIZE,
+        timems = device_apply_stencil_image(in, SIZE, filter, FILTER_SIZE,
                              out, clenv, globalWorkSize, localWorkSize);
     } else {
-        device_apply_stencil(in, SIZE, filter, FILTER_SIZE,
+        timems = device_apply_stencil(in, SIZE, filter, FILTER_SIZE,
                              out, clenv, globalWorkSize, localWorkSize);
     }
     
     host_apply_stencil(in, SIZE, filter, FILTER_SIZE, refOut);
 
     if(check_result(out, refOut, EPS)) {
+        std::cout << "Elapsed time: " << timems << " ms" << std::endl;
     	std::cout << "PASSED" << std::endl;
     } else {
     	std::cout << "FAILED" << std::endl;

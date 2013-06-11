@@ -39,3 +39,12 @@ CLEnv create_clenv(const std::string& platformName,
                    const std::string& clSourcePrefix = std::string(),
                    const std::string& buildOptions = std::string());
 void release_clenv(CLEnv& e);
+//executes kernel synchronously and returns elapsed time in milliseconds
+double timeEnqueueNDRangeKernel(cl_command_queue command_queue,
+                                cl_kernel kernel,
+                                cl_uint work_dim,
+                                const size_t *global_work_offset,
+                                const size_t *global_work_size,
+                                const size_t *local_work_size,
+                                cl_uint num_events_in_wait_list,
+                                const cl_event *event_wait_list);

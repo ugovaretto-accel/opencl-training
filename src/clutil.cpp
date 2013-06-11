@@ -438,3 +438,52 @@ void release_clenv(CLEnv& e) {
     check_cl_error(clReleaseProgram(e.program), "clReleaseProgram");
     check_cl_error(clReleaseContext(e.context), "clReleaseContext");
 }
+
+//------------------------------------------------------------------------------
+double timeEnqueueNDRangeKernel(cl_command_queue command_queue,
+                                cl_kernel kernel,
+                                cl_uint work_dim,
+                                const size_t *global_work_offset,
+                                const size_t *global_work_size,
+                                const size_t *local_work_size,
+                                cl_uint num_events_in_wait_list,
+                                const cl_event *event_wait_list) {
+    cl_int status = clFinish(command_queue);
+    check_cl_error(status, "clFinish");
+    cl_event profilingEvent;
+    status = clEnqueueNDRangeKernel(command_queue,
+                                    kernel,              
+                                    work_dim,
+                                    global_work_offset,
+                                    global_work_size,
+                                    local_work_size,
+                                    num_events_in_wait_list,
+                                    event_wait_list,
+                                    &profilingEvent);
+    check_cl_error(status, "clEnqueueNDRangeKernel");
+    status = clFinish(command_queue); //ensure kernel execution is
+    //terminated; used for timing purposes only; there is no need to enforce
+    //termination when issuing a subsequent blocking data transfer operation
+    check_cl_error(status, "clFinish");
+    status = clWaitForEvents(1, &profilingEvent);
+    check_cl_error(status, "clWaitForEvents");
+    cl_ulong kernelStartTime = cl_ulong(0);
+    cl_ulong kernelEndTime   = cl_ulong(0);
+    size_t retBytes = size_t(0);
+    double kernelElapsedTime_ms = double(0); 
+   
+    status = clGetEventProfilingInfo(profilingEvent,
+                                     CL_PROFILING_COMMAND_QUEUED,
+                                     sizeof(cl_ulong),
+                                     &kernelStartTime, &retBytes);
+    check_cl_error(status, "clGetEventProfilingInfo");
+    status = clGetEventProfilingInfo(profilingEvent,
+                                     CL_PROFILING_COMMAND_END,
+                                     sizeof(cl_ulong),
+                                     &kernelEndTime, &retBytes);
+    check_cl_error(status, "clGetEventProfilingInfo");
+    //event timing is reported in nano seconds: divide by 1e6 to get
+    //time in milliseconds
+    kernelElapsedTime_ms =  (double)(kernelEndTime - kernelStartTime) / 1E6;
+    return kernelElapsedTime_ms;
+}
