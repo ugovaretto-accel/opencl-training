@@ -1,6 +1,5 @@
 //Convolution with and without image objects; square grids and square filters
 //Author: Ugo Varetto
-
 #ifdef DOUBLE
 #pragma OPENCL EXTENSION cl_khr_fp64: enable
 typedef double real_t;
@@ -55,7 +54,7 @@ __kernel void filter_image(read_only image2d_t src,
                                     (int2)(i + fheight / 2, j + fwidth / 2));
             const float4 iv = read_imagef(filter, sampler, 
                                           coord + (int2)(i, j));
-           e += iv.x * weight.x; 
+           e = -1;//iv.x * weight.x; 
         }
     }
     out[coord.y * width + coord.x] = e;

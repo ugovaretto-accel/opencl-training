@@ -20,3 +20,5 @@ echo $'\n=== 06_matrix_multiply_timing ==='
 $RUN $DIR/06_matrix_multiply_timing "$PLATFORM" default 0 $CLSRC/04_matrix_multiply.cl matmul 256 16
 echo $'\n=== 06_matrix_multiply_timing - block ==='
 $RUN $DIR/06_matrix_multiply_timing "$PLATFORM" default 0 $CLSRC/04_matrix_multiply.cl block_matmul 256 16
+#echo $'\n=== 07_convolution'
+#$RUN $DIR/07_convolution "$PLATFORM" default 0 $CLSRC/07_convolution.cl filter

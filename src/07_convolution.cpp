@@ -217,24 +217,14 @@ void device_apply_stencil_image(const std::vector< real_t >& in,
                             0,      //parameter id
                             sizeof(cl_image), //size of parameter
                             &devIn); //pointer to parameter
-    check_cl_error(status, "clSetKernelArg(in)");
-    status = clSetKernelArg(clenv.kernel, //kernel
-                            1,      //parameter id
-                            sizeof(int), //size of parameter
-                            &SIZE); //pointer to parameter
     check_cl_error(status, "clSetKernelArg(size)");
     status = clSetKernelArg(clenv.kernel, //kernel
-                            2,      //parameter id
+                            1,      //parameter id
                             sizeof(cl_image), //size of parameter
                             &devFilter); //pointer to parameter
-    check_cl_error(status, "clSetKernelArg(filter)");
-    status = clSetKernelArg(clenv.kernel, //kernel
-                            3,      //parameter id
-                            sizeof(int), //size of parameter
-                            &FILTER_SIZE); //pointer to parameter
     check_cl_error(status, "clSetKernelArg(SIZE)");
     status = clSetKernelArg(clenv.kernel, //kernel
-                            4,      //parameter id
+                            2,      //parameter id
                             sizeof(cl_mem), //size of parameter
                             &devOut); //pointer to parameter
     check_cl_error(status, "clSetKernelArg(out)");
@@ -299,12 +289,12 @@ int main(int argc, char** argv) {
         return 0; 
     }
     std::string options;
-    for(int a = 5; a != argc; ++a) {
+    for(int a = 6; a < argc; ++a) {
         options += argv[a];
     }
-    const int FILTER_SIZE = 9; //3x3
-    const int SIZE = 256; //16 x 16
-    const int BLOCK_SIZE = 8; //4 x 4 tiles
+    const int FILTER_SIZE = 3; //3x3
+    const int SIZE = 16; //16 x 16
+    const int BLOCK_SIZE = 4; //4 x 4 tiles
     //setup kernel launch configuration
     //total number of threads == number of array elements
     const size_t globalWorkSize[2] = {SIZE, SIZE};
@@ -336,7 +326,7 @@ int main(int argc, char** argv) {
     std::vector<real_t> out(SIZE * SIZE,real_t(0));
     std::vector<real_t> refOut(SIZE * SIZE,real_t(0));        
     
-    device_apply_stencil(in, SIZE, filter, FILTER_SIZE,
+    device_apply_stencil_image(in, SIZE, filter, FILTER_SIZE,
                          out, clenv, globalWorkSize, localWorkSize);
    
     

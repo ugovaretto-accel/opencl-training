@@ -177,7 +177,13 @@ int main(int argc, char** argv) {
                               sizeof(cl_device_id),
                               &deviceID, 0);
     check_cl_error(status, "clGetContextInfo");
-    cl_int buildStatus = clBuildProgram(program, 1, &deviceID, 0, 0, 0);
+    cl_int buildStatus = clBuildProgram(program, //program
+                                        1, //number of devices
+                                        &deviceID, //array of device ids
+                                        0, //program options as passed on
+                                           //the command line to regualar
+                                           //compilers e.g. -DUSE_DOUBLE
+                                        0, 0);
     //log output if any
     char buffer[0x10000] = "";
     size_t len = 0;
