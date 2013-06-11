@@ -55,7 +55,7 @@ void host_apply_stencil(const std::vector< real_t >& in,
                                   + filterSize / 2 + fx];                 
                 }
             }
-            out[y * size + x] = e;// / real_t(filterSize * filterSize);  
+            out[y * size + x] = e / real_t(filterSize * filterSize);  
 		}
 	}
 }
@@ -266,8 +266,7 @@ bool check_result(const std::vector< real_t >& v1,
 	              const std::vector< real_t >& v2,
 	              double eps) {
     for(int i = 0; i != v1.size(); ++i) {
-        std::cout << v1[i] << ' ' << v2[i] << std::endl;
-    	//if(double(std::fabs(v1[i] - v2[i])) > eps) return false;
+    	if(double(std::fabs(v1[i] - v2[i])) > eps) return false;
     }
     return true;
 }

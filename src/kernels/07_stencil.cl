@@ -23,7 +23,7 @@ __kernel void filter(const __global real_t* src,
                           + filterSize / 2]; 
         }
     }
-    out[coord.y * size + coord.x] = e;// / (filterSize * filterSize);
+    out[coord.y * size + coord.x] = e / (filterSize * filterSize);
 }
 
 //------------------------------------------------------------------------------
@@ -45,11 +45,12 @@ __kernel void filter_image(read_only image2d_t src,
     for(int i = -fheight / 2; i <= fheight / 2; ++i) {
         for(int j = -fwidth / 2; j <= fwidth / 2; ++j) {
             const float4 weight = read_imagef(filter, sampler,
-                                    (int2)(j + fwidth / 2, i + fheight / 2));
-            const float4 iv = read_imagef(filter, sampler, 
+                                              (int2)(j + fwidth / 2,
+                                              i + fheight / 2));
+            const float4 iv = read_imagef(src, sampler, 
                                           coord + (int2)(j, i));
             e += iv.x * weight.x; 
         }
     }
-    out[coord.y * width + coord.x] = e;// / (float)(fwidth * fheight);
+    out[coord.y * width + coord.x] = e / (float)(fwidth * fheight);
 }
