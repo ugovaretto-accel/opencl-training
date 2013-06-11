@@ -273,7 +273,7 @@ bool check_result(const std::vector< real_t >& v1,
 
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
-    if(argc < 8) {
+    if(argc < 9) {
         std::cout << "usage:\n" << argv[0] << '\n'
                   << "  <platform name>\n"
                      "  <device type = default | cpu | gpu | acc | all>\n"
@@ -282,12 +282,15 @@ int main(int argc, char** argv) {
                      "  <kernel name>\n"
                      "  <size>\n"
                      "  <workgroup size>\n"
+                     "  <std|image>\n"
                      "  [build parameters passed to the OpenCL compiler]\n"
                   << std::endl;
         return 0; 
     }
+    bool image = false;
+    if(std::string(argv[8]) == "image") image = true; 
     std::string options;
-    for(int a = 8; a < argc; ++a) {
+    for(int a = 9; a < argc; ++a) {
         options += argv[a];
     }
     const int FILTER_SIZE = 3; //3x3
@@ -325,9 +328,13 @@ int main(int argc, char** argv) {
     std::vector<real_t> out(SIZE * SIZE,real_t(0));
     std::vector<real_t> refOut(SIZE * SIZE,real_t(0));        
     
-    device_apply_stencil_image(in, SIZE, filter, FILTER_SIZE,
-                         out, clenv, globalWorkSize, localWorkSize);
-   
+    if(image) {
+        device_apply_stencil_image(in, SIZE, filter, FILTER_SIZE,
+                             out, clenv, globalWorkSize, localWorkSize);
+    } else {
+        device_apply_stencil(in, SIZE, filter, FILTER_SIZE,
+                             out, clenv, globalWorkSize, localWorkSize);
+    }
     
     host_apply_stencil(in, SIZE, filter, FILTER_SIZE, refOut);
 
