@@ -284,6 +284,8 @@ int main(int argc, char** argv) {
                      "  <workgroup size>\n"
                      "  <std|image>\n"
                      "  [build parameters passed to the OpenCL compiler]\n"
+                     "  filter size is 3x3; size - halo region size must be"
+                     " evenly divisible by the workgroup size"
                   << std::endl;
         return 0; 
     }
@@ -296,6 +298,12 @@ int main(int argc, char** argv) {
     const int FILTER_SIZE = 3; //3x3
     const int SIZE = atoi(argv[6]);
     const int BLOCK_SIZE = atoi(argv[7]);
+    if((SIZE - (2 * (FILTER_SIZE / 2))) % BLOCK_SIZE != 0) {
+        std::cerr << "size(" << SIZE << ") - " << (2 * (FILTER_SIZE / 2))
+                  << " must be evenly divisible by the workgroup size("
+                  << BLOCK_SIZE << ")" << std::endl;
+        exit(EXIT_FAILURE);          
+    }   
     //setup kernel launch configuration
     //total number of threads == number of array elements in core space i.e.
     //image - border (= 2 x (filter size DIV 2) != filter size)

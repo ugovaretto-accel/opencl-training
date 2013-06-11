@@ -1,5 +1,9 @@
 //Convolution with and without image objects; square grids and square filters
 //Author: Ugo Varetto
+
+//IMPORTANT: the core space size(total size - filter size) *must* be evenly
+//divisible by the workgroup size in each dimension
+
 #ifdef DOUBLE
 #pragma OPENCL EXTENSION cl_khr_fp64: enable
 typedef double real_t;
