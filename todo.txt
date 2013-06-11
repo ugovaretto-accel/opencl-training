@@ -9,8 +9,9 @@ Show example with vector data types
 
 Show how to use pinned memory and memory mapping with clEnqueueMapBuffer
 
-Images: perform same stencil computation on regular memory and image memory
-and compare the results; if using actual images link with FreeImage library 
+[done - issues with nvidia cards]Images: perform same stencil computation on
+regular memory and image memory and compare the results; if using actual images
+link with FreeImage library 
 
 Concurrent/parallel use of multiple resources: contexts, kernels and command
 queues;show e.g. how run parallel kernels on different devices and/or
@@ -22,7 +23,8 @@ compiled for a scpecific device
 to load the kernel; add a utility function to perform compilation.
 
 Subregions, and offsets: restrict computation to a subset of the data and/or
-show how to run parallel kernels on different data regions
+show how to run parallel kernels on different data regions; kernel launch on
+subregions is not supported by most OpenCL implementations.
 
 Events:
 
