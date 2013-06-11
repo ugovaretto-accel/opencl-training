@@ -32,7 +32,7 @@ std::vector< real_t > create_2d_grid(int width, int height,
 	srand(time(0));
     for(int y = 0; y != height; ++y) {
         for(int x = 0; x != height; ++x) {
-            g[y * width + x] = rand() % 10;
+            g[y * width + x] = (rand() % 10);// / 10.0;
         }
     }
 	return g;
@@ -45,19 +45,17 @@ void host_apply_stencil(const std::vector< real_t >& in,
 	                    const std::vector< real_t >& filter,
                         int filterSize,
 	                    std::vector< real_t >& out) { 
-    int offset = size / 2; //e.g if size == 3 halo region is 1 element width
-                           //on each side of the grid
-	for(int y = 0; y != size; ++y) {
-		for(int x = 0; x != size; ++x) {
+    for(int y = filterSize / 2; y < size - filterSize / 2; ++y) {
+        for(int x = filterSize / 2; x < size - filterSize / 2; ++x) {
             real_t e = real_t(0);
-            for(int fy = -filterSize / 2; fy < filterSize / 2; ++fy) {
-                for(int fx = -filterSize / 2; fx < filterSize / 2; ++fx) {
+            for(int fy = -filterSize / 2; fy <= filterSize / 2; ++fy) {
+                for(int fx = -filterSize / 2; fx <= filterSize / 2; ++fx) {
                     e += in[(y + fy) * size + x + fx]
                          * filter[(filterSize / 2 + fy) * filterSize
-                           + filterSize / 2 + fx];                 
+                                  + filterSize / 2 + fx];                 
                 }
             }
-            out[y * size + x] = e;  
+            out[y * size + x] = e;// / real_t(filterSize * filterSize);  
 		}
 	}
 }
@@ -73,16 +71,16 @@ void device_apply_stencil(const std::vector< real_t >& in,
                           const size_t localWorkSize[2]) {
 
     const int FILTER_SIZE = filterSize;
-    const int FILTER_BYTE_SIZE = sizeof(real_t) * FILTER_SIZE;
+    const int FILTER_BYTE_SIZE = sizeof(real_t) * FILTER_SIZE * FILTER_SIZE;
     const int SIZE = size;
     const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
 
     cl_int status;
     //allocate output buffer on OpenCL device
     cl_mem devOut = clCreateBuffer(clenv.context,
-                                   CL_MEM_WRITE_ONLY,
+                                   CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
                                    BYTE_SIZE,
-                                   0,
+                                   const_cast< real_t* >(&out[0]),
                                    &status);
     check_cl_error(status, "clCreateBuffer");
 
@@ -175,16 +173,16 @@ void device_apply_stencil_image(const std::vector< real_t >& in,
                                 const size_t localWorkSize[2]) {
 
     const int FILTER_SIZE = filterSize;
-    const int FILTER_BYTE_SIZE = sizeof(real_t) * FILTER_SIZE;
+    const int FILTER_BYTE_SIZE = sizeof(real_t) * FILTER_SIZE * FILTER_SIZE;
     const int SIZE = size;
     const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
 
     cl_int status;
     //allocate output buffer on OpenCL device
     cl_mem devOut = clCreateBuffer(clenv.context,
-                                   CL_MEM_WRITE_ONLY,
+                                   CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
                                    BYTE_SIZE,
-                                   0,
+                                   const_cast< real_t* >(&out[0]),
                                    &status);
     check_cl_error(status, "clCreateBuffer");
 
@@ -197,7 +195,7 @@ void device_apply_stencil_image(const std::vector< real_t >& in,
                                      &format,
                                      size,
                                      size,
-                                     0,
+                                     size * sizeof(real_t),
                                      const_cast< real_t* >(&in[0]),
                                      &status);
     check_cl_error(status, "clCreateImage2D");
@@ -206,7 +204,7 @@ void device_apply_stencil_image(const std::vector< real_t >& in,
                                     &format,
                                     filterSize,
                                     filterSize,
-                                    0,
+                                    size * sizeof(real_t),
                                     const_cast< real_t* >(&filter[0]),
                                     &status);
     check_cl_error(status, "clCreateImage2D");
@@ -215,12 +213,12 @@ void device_apply_stencil_image(const std::vector< real_t >& in,
     //set kernel parameters
     status = clSetKernelArg(clenv.kernel, //kernel
                             0,      //parameter id
-                            sizeof(cl_image), //size of parameter
+                            sizeof(cl_mem), //size of parameter
                             &devIn); //pointer to parameter
     check_cl_error(status, "clSetKernelArg(size)");
     status = clSetKernelArg(clenv.kernel, //kernel
                             1,      //parameter id
-                            sizeof(cl_image), //size of parameter
+                            sizeof(cl_mem), //size of parameter
                             &devFilter); //pointer to parameter
     check_cl_error(status, "clSetKernelArg(SIZE)");
     status = clSetKernelArg(clenv.kernel, //kernel
@@ -268,14 +266,15 @@ bool check_result(const std::vector< real_t >& v1,
 	              const std::vector< real_t >& v2,
 	              double eps) {
     for(int i = 0; i != v1.size(); ++i) {
-    	if(double(std::fabs(v1[i] - v2[i])) > eps) return false;
+        std::cout << v1[i] << ' ' << v2[i] << std::endl;
+    	//if(double(std::fabs(v1[i] - v2[i])) > eps) return false;
     }
     return true;
 }
 
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
-    if(argc < 6) {
+    if(argc < 8) {
         std::cout << "usage:\n" << argv[0] << '\n'
                   << "  <platform name>\n"
                      "  <device type = default | cpu | gpu | acc | all>\n"
@@ -289,20 +288,21 @@ int main(int argc, char** argv) {
         return 0; 
     }
     std::string options;
-    for(int a = 6; a < argc; ++a) {
+    for(int a = 8; a < argc; ++a) {
         options += argv[a];
     }
     const int FILTER_SIZE = 3; //3x3
-    const int SIZE = 16; //16 x 16
-    const int BLOCK_SIZE = 4; //4 x 4 tiles
+    const int SIZE = atoi(argv[6]);
+    const int BLOCK_SIZE = atoi(argv[7]);
     //setup kernel launch configuration
-    //total number of threads == number of array elements
-    const size_t globalWorkSize[2] = {SIZE, SIZE};
+    //total number of threads == number of array elements in core space i.e.
+    //image - border (= 2 x (filter size DIV 2) != filter size)
+    const size_t globalWorkSize[2] = {SIZE - 2 * (FILTER_SIZE / 2), 
+                                      SIZE - 2 * (FILTER_SIZE / 2)};
     //number of per-workgroup local threads
     const size_t localWorkSize[2]  = {BLOCK_SIZE, BLOCK_SIZE}; 
     //setup text header that will be prefixed to opencl code
     std::ostringstream clheaderStream;
-    clheaderStream << "#define BLOCK_SIZE " << BLOCK_SIZE << '\n';
 #ifdef USE_DOUBLE    
     clheaderStream << "#define DOUBLE\n";
     const double EPS = 0.000000001;
