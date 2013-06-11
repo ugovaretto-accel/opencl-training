@@ -1,4 +1,4 @@
-//Convolution with and without image objects
+//Convolution with and without image objects; square grids and square filters
 //Author: Ugo Varetto
 
 #ifdef DOUBLE

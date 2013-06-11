@@ -14,6 +14,8 @@ typedef double real_t;
 typedef float real_t;
 #endif
 
+//there is no image data type: only mem objects
+typedef cl_mem cl_image;
 
 //------------------------------------------------------------------------------
 std::vector< real_t > create_filter() {
@@ -70,6 +72,11 @@ void device_apply_stencil(const std::vector< real_t >& in,
                           const size_t globalWorkSize[2],
                           const size_t localWorkSize[2]) {
 
+    const int FILTER_SIZE = filterSize;
+    const int FILTER_BYTE_SIZE = sizeof(real_t) * FILTER_SIZE;
+    const int SIZE = size;
+    const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
+
     cl_int status;
     //allocate output buffer on OpenCL device
     cl_mem devOut = clCreateBuffer(clenv.context,
@@ -83,13 +90,13 @@ void device_apply_stencil(const std::vector< real_t >& in,
     cl_mem devIn = clCreateBuffer(clenv.context,
                                   CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                   BYTE_SIZE,
-                                  &in[0], //<-- copy data from in
+                                  const_cast< real_t* >(&in[0]),
                                   &status);
     check_cl_error(status, "clCreateBuffer");
     cl_mem devFilter = clCreateBuffer(clenv.context,
                                   CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                   FILTER_BYTE_SIZE,
-                                  &filter[0], //<-- copy data from filter
+                                  const_cast< real_t* >(&filter[0]),
                                   &status);
     check_cl_error(status, "clCreateBuffer");
 
@@ -167,6 +174,11 @@ void device_apply_stencil_image(const std::vector< real_t >& in,
                                 const size_t globalWorkSize[2],
                                 const size_t localWorkSize[2]) {
 
+    const int FILTER_SIZE = filterSize;
+    const int FILTER_BYTE_SIZE = sizeof(real_t) * FILTER_SIZE;
+    const int SIZE = size;
+    const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
+
     cl_int status;
     //allocate output buffer on OpenCL device
     cl_mem devOut = clCreateBuffer(clenv.context,
@@ -186,16 +198,16 @@ void device_apply_stencil_image(const std::vector< real_t >& in,
                                      size,
                                      size,
                                      0,
-                                     &in[0], //<-- copy data from in
+                                     const_cast< real_t* >(&in[0]),
                                      &status);
     check_cl_error(status, "clCreateImage2D");
     cl_image devFilter = clCreateImage2D(clenv.context,
                                     CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                     &format,
                                     filterSize,
-                                    fitlerSize,
+                                    filterSize,
                                     0,
-                                    &filter[0], //<-- copy data from filter
+                                    const_cast< real_t* >(&filter[0]),
                                     &status);
     check_cl_error(status, "clCreateImage2D");
 
@@ -280,6 +292,8 @@ int main(int argc, char** argv) {
                      " <device num>"
                      " <OpenCL source file path>"
                      " <kernel name>"
+                     " <size>"
+                     " <workgroup size>"
                      " [build parameters passed to the OpenCL compiler]"
                   << std::endl;
         return 0; 
@@ -289,10 +303,8 @@ int main(int argc, char** argv) {
         options += argv[a];
     }
     const int FILTER_SIZE = 9; //3x3
-    const int FILTER_BYTE_SIZE = sizeof(real_t) * FILTER_SIZE;
-    const int SIZE = 16; //16 x 16
-    const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
-    const int BLOCK_SIZE = 4; //4 x 4 tiles
+    const int SIZE = 256; //16 x 16
+    const int BLOCK_SIZE = 8; //4 x 4 tiles
     //setup kernel launch configuration
     //total number of threads == number of array elements
     const size_t globalWorkSize[2] = {SIZE, SIZE};
