@@ -7,7 +7,9 @@ OpenCL 1.1(NVIDIA and AMD) and OpenCL 1.2(Intel) drivers.
 On most Linux systems(other than Cray) the OpenCL includes are under 
 /usr/include and libOpenCL is in /usr/lib. libOpenCL will use the information
 found under /etc/OpenCL to select the requested OpenCL implementation at
-run-time. 
+run-time.
+
+Look at the ".sh" scripts for information on how to build and run examples. 
 
 Cray XK-7 with CUDA 5 installed
 -------------------------------
