@@ -286,15 +286,15 @@ bool check_result(const std::vector< real_t >& v1,
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
     if(argc < 6) {
-        std::cout << "usage: " << argv[0]
-                  << " <platform name>"
-                     " <device type = default | cpu | gpu | acc | all>"
-                     " <device num>"
-                     " <OpenCL source file path>"
-                     " <kernel name>"
-                     " <size>"
-                     " <workgroup size>"
-                     " [build parameters passed to the OpenCL compiler]"
+        std::cout << "usage:\n" << argv[0] << '\n'
+                  << "  <platform name>\n"
+                     "  <device type = default | cpu | gpu | acc | all>\n"
+                     "  <device num>\n"
+                     "  <OpenCL source file path>\n"
+                     "  <kernel name>\n"
+                     "  <size>\n"
+                     "  <workgroup size>\n"
+                     "  [build parameters passed to the OpenCL compiler]\n"
                   << std::endl;
         return 0; 
     }
@@ -309,7 +309,7 @@ int main(int argc, char** argv) {
     //total number of threads == number of array elements
     const size_t globalWorkSize[2] = {SIZE, SIZE};
     //number of per-workgroup local threads
-    const size_t localWorkSize[2] = {BLOCK_SIZE, BLOCK_SIZE}; 
+    const size_t localWorkSize[2]  = {BLOCK_SIZE, BLOCK_SIZE}; 
     //setup text header that will be prefixed to opencl code
     std::ostringstream clheaderStream;
     clheaderStream << "#define BLOCK_SIZE " << BLOCK_SIZE << '\n';
@@ -319,9 +319,14 @@ int main(int argc, char** argv) {
 #else
     const double EPS = 0.00001;
 #endif    
-    CLEnv clenv = create_clenv(argv[1], argv[2], atoi(argv[3]), false,
-                               argv[4], argv[5], clheaderStream.str(),
-                               options.c_str());
+    CLEnv clenv = create_clenv(argv[1], //platform name
+                               argv[2], //device type
+                               atoi(argv[3]), //device id
+                               false, //profiling
+                               argv[4], //cl source code
+                               argv[5], //kernel name
+                               "", //source code prefix text
+                               options.c_str()); //compiler options
    
     cl_int status;
     //create input and output matrices

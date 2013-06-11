@@ -1,0 +1,84 @@
+
+=== 01_device_query ===
+
+***************************************************
+Number of platforms: 1
+
+-----------
+Platform 0
+-----------
+Vendor: NVIDIA Corporation
+Profile: FULL_PROFILE
+Version: OpenCL 1.1 CUDA 4.2.1
+Name: NVIDIA CUDA
+Extensions: cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll 
+Number of devices: 1
+Device 0
+  Type: GPU 
+  Name: Tesla K20X
+  Version: OpenCL 1.1 CUDA
+  Vendor: NVIDIA Corporation
+  Profile: FULL_PROFILE
+  Compute units: 14
+  Max work item dim: 3
+  Work item sizes: 1024 1024 64
+  Max clock freq: 732 MHz
+  Global memory: 6039339008 bytes
+  Local memory: 49152 bytes
+
+===================================================
+Application 1958261 resources: utime ~0s, stime ~0s, Rss ~3184, inblocks ~113, outblocks ~88
+
+=== 02_create_context ===
+OpenCL context created
+OpenCL context info:
+  reference count:     1
+  device id reference: 0x61a870
+  platform:            NVIDIA CUDA
+OpenCL context released
+Application 1958262 resources: utime ~0s, stime ~2s, Rss ~160936, inblocks ~109, outblocks ~70
+
+=== 03_kernel_load_and_exec ===
+OpenCL context created
+OpenCL source code loaded
+Build output: 
+
+Built OpenCL program
+Lunched OpenCL kernel - setting all array elements to 3.14
+Output array: 
+3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 
+Released OpenCL resources
+Application 1958263 resources: utime ~0s, stime ~2s, Rss ~161148, inblocks ~129, outblocks ~105
+
+=== 04_matrix_multiply ===
+Build output: 
+
+PASSED
+Application 1958264 resources: utime ~0s, stime ~2s, Rss ~161192, inblocks ~174, outblocks ~142
+
+=== 04_matrix_multiply - block ===
+Build output: 
+
+PASSED
+Application 1958265 resources: utime ~0s, stime ~2s, Rss ~161192, inblocks ~174, outblocks ~142
+
+=== 05_dot_product ===
+Build output: 
+
+7281 7281
+PASSED
+Application 1958266 resources: utime ~0s, stime ~2s, Rss ~161188, inblocks ~155, outblocks ~144
+
+=== 06_matrix_multiply_timing ===
+Build output: 
+
+PASSED
+Elapsed time(ms): 0.425984
+Application 1958267 resources: utime ~1s, stime ~2s, Rss ~162756, inblocks ~181, outblocks ~147
+
+=== 06_matrix_multiply_timing - block ===
+Build output: 
+
+PASSED
+Elapsed time(ms): 0.207136
+Application 1958268 resources: utime ~1s, stime ~2s, Rss ~162756, inblocks ~181, outblocks ~147
