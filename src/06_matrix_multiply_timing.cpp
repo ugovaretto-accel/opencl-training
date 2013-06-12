@@ -137,13 +137,13 @@ int main(int argc, char** argv) {
     check_cl_error(status, "clSetKernelArg(SIZE)");
 
 
-    //7)setup kernel launch configuration
+    //setup kernel launch configuration
     //total number of threads == number of array elements
     const size_t globalWorkSize[2] = {SIZE, SIZE};
     //number of per-workgroup local threads
     const size_t localWorkSize[2] = {BLOCK_SIZE, BLOCK_SIZE}; 
 
-    //8)launch kernel
+    //launch kernel
     //to make sure there are no pending commands in the queue do wait
     //for any commands to finish execution
     status = clFinish(clenv.commandQueue);
@@ -188,7 +188,7 @@ int main(int argc, char** argv) {
     //event timing is reported in nano seconds: divide by 1e6 to get
     //time in milliseconds
     kernelElapsedTime_ms =  (double)(kernelEndTime - kernelStartTime) / 1E6;
-    //9)read back and print results
+    //read back and check results
     status = clEnqueueReadBuffer(clenv.commandQueue,
                                  devC,
                                  CL_TRUE, //blocking read

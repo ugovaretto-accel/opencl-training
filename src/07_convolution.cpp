@@ -127,7 +127,7 @@ double device_apply_stencil(const std::vector< real_t >& in,
     check_cl_error(status, "clSetKernelArg(out)");
 
 
-    //launch kernel
+    //launch and time kernel
     const double timems = timeEnqueueNDRangeKernel(
                                     clenv.commandQueue, //queue
                                     clenv.kernel, //kernel                                   
@@ -142,7 +142,7 @@ double device_apply_stencil(const std::vector< real_t >& in,
 
     check_cl_error(status, "clEnqueueNDRangeKernel");
     
-    //9)read back and print results
+    //read data from device
     status = clEnqueueReadBuffer(clenv.commandQueue,
                                  devOut,
                                  CL_TRUE, //blocking read
@@ -178,18 +178,32 @@ double device_apply_stencil_image(const std::vector< real_t >& in,
     const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
 
     cl_int status;
+    cl_image_format format;
+    format.image_channel_order = CL_INTENSITY;
+    format.image_channel_data_type = CL_FLOAT;
     //allocate output buffer on OpenCL device
+#ifdef WRITE_TO_IMAGE
+    cl_image devOut = clCreateImage2D(clenv.context,
+                                    CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
+                                    &format,
+                                    size,
+                                    size,
+                                    0, // row stride,
+                                       // if 0 = size * sizeof(element type)
+                                    const_cast< real_t* >(&out[0]),
+                                    &status);
+    check_cl_error(status, "clCreateImage2D");
+#else    
     cl_mem devOut = clCreateBuffer(clenv.context,
                                    CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
                                    BYTE_SIZE,
                                    const_cast< real_t* >(&out[0]),
                                    &status);
     check_cl_error(status, "clCreateBuffer");
+#endif    
 
     //allocate input buffers on OpenCL devices and copy data
-    cl_image_format format;
-    format.image_channel_order = CL_INTENSITY;
-    format.image_channel_data_type = CL_FLOAT;
+   
     cl_image devIn = clCreateImage2D(clenv.context,
                                      CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                      &format,
@@ -230,7 +244,7 @@ double device_apply_stencil_image(const std::vector< real_t >& in,
     check_cl_error(status, "clSetKernelArg(out)");
 
 
-    //launch kernel
+    //launch and time kernel
     const double timems = timeEnqueueNDRangeKernel(
                                     clenv.commandQueue, //queue
                                     clenv.kernel, //kernel                                   
@@ -244,8 +258,31 @@ double device_apply_stencil_image(const std::vector< real_t >& in,
                                         //before kernel executed
 
     check_cl_error(status, "clEnqueueNDRangeKernel");
-    
-    //9)read back and print results
+
+#ifdef WRITE_TO_IMAGE
+    //read data from device
+    const size_t origin[3] = {0, 0, 0};
+    const size_t region[3] = {SIZE, SIZE, 1};
+    //const size_t rowPitch = SIZE * sizeof(real_t);
+
+    //not required for 2d
+    //const size_t slicePitch = SIZE * SIZE * sizeof(real_t);
+    status = clEnqueueReadImage(clenv.commandQueue,
+                                 devOut,
+                                 CL_TRUE, //blocking read
+                                 &origin[0],
+                                 &region[0],
+                                 0,//rowPitch
+                                 0,//slicePitch,
+                                 &out[0], //destination buffer in host memory
+                                 0, //number of events that need to
+                                    //complete before transfer executed
+                                 0, //list of events that need to complete
+                                    //before transfer executed
+                                 0); //event identifying this specific operation
+    check_cl_error(status, "clEnqueueReadImage");
+
+#else    
     status = clEnqueueReadBuffer(clenv.commandQueue,
                                  devOut,
                                  CL_TRUE, //blocking read
@@ -258,7 +295,10 @@ double device_apply_stencil_image(const std::vector< real_t >& in,
                                     //before transfer executed
                                  0); //event identifying this specific operation
     check_cl_error(status, "clEnqueueReadBuffer");
+#endif    
     check_cl_error(clReleaseMemObject(devOut), "clReleaseMemObject");
+    check_cl_error(clReleaseMemObject(devIn), "clReleaseMemObject");
+    check_cl_error(clReleaseMemObject(devFilter), "clReleaseMemObject");
     return timems;
 }
 
@@ -292,11 +332,21 @@ int main(int argc, char** argv) {
         return 0; 
     }
     bool image = false;
-    if(std::string(argv[8]) == "image") image = true; 
+    if(std::string(argv[8]) == "image") {
+#ifdef USE_DOUBLE
+        std::cerr << "Double precision not supported by 1-element float images"
+                  << std::endl;
+        exit(EXIT_FAILURE);
+#endif                  
+        image = true; 
+    }
     std::string options;
     for(int a = 9; a < argc; ++a) {
         options += argv[a];
     }
+#ifdef WRITE_TO_IMAGE
+    options += " -DWRITE_TO_IMAGE";
+#endif
     const int FILTER_SIZE = 3; //3x3
     const int SIZE = atoi(argv[6]);
     const int BLOCK_SIZE = atoi(argv[7]);
@@ -338,6 +388,7 @@ int main(int argc, char** argv) {
     std::vector<real_t> out(SIZE * SIZE,real_t(0));
     std::vector<real_t> refOut(SIZE * SIZE,real_t(0));        
     
+    //launch kernels and check results
     double timems = 0;
     if(image) {
         timems = device_apply_stencil_image(in, SIZE, filter, FILTER_SIZE,

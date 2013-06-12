@@ -115,13 +115,13 @@ int main(int argc, char** argv) {
     check_cl_error(status, "clSetKernelArg(devOut)");
    
 
-    //7)setup kernel launch configuration
+    //setup kernel launch configuration
     //total number of threads == number of array elements
     const size_t globalWorkSize[1] = {SIZE};
     //number of per-workgroup local threads
     const size_t localWorkSize[1] = {BLOCK_SIZE}; 
 
-    //8)launch kernel
+    //launch kernel
     status = clEnqueueNDRangeKernel(clenv.commandQueue, //queue
                                     clenv.kernel, //kernel                                   
                                     1, //number of dimensions for work-items
@@ -137,7 +137,7 @@ int main(int argc, char** argv) {
 
     check_cl_error(status, "clEnqueueNDRangeKernel");
     
-    //9)read back and print results
+    //read back and print results
     std::vector< real_t > partialDot(REDUCED_SIZE); 
     status = clEnqueueReadBuffer(clenv.commandQueue,
                                  partialReduction,

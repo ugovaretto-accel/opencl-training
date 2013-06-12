@@ -2,7 +2,7 @@
 === 01_device_query ===
 
 ***************************************************
-Number of platforms: 1
+Number of platforms: 2
 
 -----------
 Platform 0
@@ -27,7 +27,31 @@ Device 0
   Local memory: 49152 bytes
 
 ===================================================
-Application 1958261 resources: utime ~0s, stime ~0s, Rss ~3184, inblocks ~113, outblocks ~88
+
+-----------
+Platform 1
+-----------
+Vendor: Advanced Micro Devices, Inc.
+Profile: FULL_PROFILE
+Version: OpenCL 1.1 AMD-APP-SDK-v2.5 (684.213)
+Name: AMD Accelerated Parallel Processing
+Extensions: cl_khr_icd cl_amd_event_callback cl_amd_offline_devices
+Number of devices: 1
+Device 0
+  Type: CPU 
+  Name: AMD Opteron(TM) Processor 6272                 
+  Version: OpenCL 1.1 AMD-APP-SDK-v2.5 (684.213)
+  Vendor: AuthenticAMD
+  Profile: FULL_PROFILE
+  Compute units: 16
+  Max work item dim: 3
+  Work item sizes: 1024 1024 1024
+  Max clock freq: 2100 MHz
+  Global memory: 33878683648 bytes
+  Local memory: 32768 bytes
+
+===================================================
+Application 1960923 resources: utime ~0s, stime ~0s, Rss ~8300, inblocks ~179, outblocks ~89
 
 === 02_create_context ===
 OpenCL context created
@@ -36,7 +60,7 @@ OpenCL context info:
   device id reference: 0x61a870
   platform:            NVIDIA CUDA
 OpenCL context released
-Application 1958262 resources: utime ~0s, stime ~2s, Rss ~160936, inblocks ~109, outblocks ~70
+Application 1960924 resources: utime ~0s, stime ~2s, Rss ~166080, inblocks ~175, outblocks ~70
 
 === 03_kernel_load_and_exec ===
 OpenCL context created
@@ -48,37 +72,58 @@ Lunched OpenCL kernel - setting all array elements to 3.14
 Output array: 
 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 
 Released OpenCL resources
-Application 1958263 resources: utime ~0s, stime ~2s, Rss ~161148, inblocks ~129, outblocks ~105
+Application 1960925 resources: utime ~0s, stime ~2s, Rss ~166252, inblocks ~195, outblocks ~105
 
 === 04_matrix_multiply ===
 Build output: 
 
 PASSED
-Application 1958264 resources: utime ~0s, stime ~2s, Rss ~161192, inblocks ~174, outblocks ~142
+Application 1960926 resources: utime ~0s, stime ~2s, Rss ~166296, inblocks ~242, outblocks ~148
 
 === 04_matrix_multiply - block ===
 Build output: 
 
 PASSED
-Application 1958265 resources: utime ~0s, stime ~2s, Rss ~161192, inblocks ~174, outblocks ~142
+Application 1960927 resources: utime ~0s, stime ~2s, Rss ~166296, inblocks ~242, outblocks ~148
 
 === 05_dot_product ===
 Build output: 
 
-7281 7281
+7215 7215
 PASSED
-Application 1958266 resources: utime ~0s, stime ~2s, Rss ~161188, inblocks ~155, outblocks ~144
+Application 1960928 resources: utime ~0s, stime ~2s, Rss ~166292, inblocks ~223, outblocks ~149
 
 === 06_matrix_multiply_timing ===
 Build output: 
 
 PASSED
-Elapsed time(ms): 0.425984
-Application 1958267 resources: utime ~1s, stime ~2s, Rss ~162756, inblocks ~181, outblocks ~147
+Elapsed time(ms): 0.41504
+Application 1960929 resources: utime ~1s, stime ~2s, Rss ~167972, inblocks ~248, outblocks ~148
 
 === 06_matrix_multiply_timing - block ===
 Build output: 
 
 PASSED
-Elapsed time(ms): 0.207136
-Application 1958268 resources: utime ~1s, stime ~2s, Rss ~162756, inblocks ~181, outblocks ~147
+Elapsed time(ms): 0.207648
+Application 1960930 resources: utime ~1s, stime ~2s, Rss ~167980, inblocks ~248, outblocks ~148
+
+=== 07_convolution
+Build output: 
+
+Elapsed time: 0.080928 ms
+PASSED
+Application 1960931 resources: utime ~0s, stime ~2s, Rss ~167744, inblocks ~250, outblocks ~154
+
+=== 07_convolution - read from images write to buffer
+Build output: 
+
+Elapsed time: 0.125216 ms
+PASSED
+Application 1960932 resources: utime ~0s, stime ~2s, Rss ~167808, inblocks ~250, outblocks ~154
+
+=== 07_convolution - read from images write to image
+Build output: 
+
+Elapsed time: 0.132448 ms
+PASSED
+Application 1960934 resources: utime ~0s, stime ~2s, Rss ~167880, inblocks ~342, outblocks ~158

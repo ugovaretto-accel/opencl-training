@@ -3,6 +3,9 @@ Ideas for additional training material
 
 [done]Show how to pass compilation options to clBuildProgram
 
+Show example of standard OpenCL compiler switches; in particular show how
+'-g' can be used to debug kernel code 
+
 Full block matrix multiply with non-square matrices
 
 Show example with vector data types
