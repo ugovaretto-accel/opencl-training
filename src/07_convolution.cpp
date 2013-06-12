@@ -1,4 +1,4 @@
-//IN PROGRESS: stencil/convolution w and w/o images
+//Stencil/convolution w and w/o images;
 //Author: Ugo Varetto
 #include <iostream>
 #include <cstdlib>
@@ -195,7 +195,8 @@ double device_apply_stencil_image(const std::vector< real_t >& in,
                                      &format,
                                      size,
                                      size,
-                                     size * sizeof(real_t),
+                                     0, // row stride,
+                                        // if 0 = size * sizeof(element type)
                                      const_cast< real_t* >(&in[0]),
                                      &status);
     check_cl_error(status, "clCreateImage2D");
@@ -204,7 +205,8 @@ double device_apply_stencil_image(const std::vector< real_t >& in,
                                     &format,
                                     filterSize,
                                     filterSize,
-                                    size * sizeof(real_t),
+                                    0, // row stride,
+                                       // if 0 = size * sizeof(element type)
                                     const_cast< real_t* >(&filter[0]),
                                     &status);
     check_cl_error(status, "clCreateImage2D");
