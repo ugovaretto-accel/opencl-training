@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
    try {
       // Place the GPU devices of the first platform into a context
       cl::Platform::get(&platforms);
-      if(platforms.size() >= platformID) {
+      if(platforms.size() <= platformID) {
          std::cerr << "Platform id " << platformID << " is not available\n";
          exit(EXIT_FAILURE);
       }

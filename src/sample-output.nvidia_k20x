@@ -51,7 +51,7 @@ Device 0
   Local memory: 32768 bytes
 
 ===================================================
-Application 1960923 resources: utime ~0s, stime ~0s, Rss ~8300, inblocks ~179, outblocks ~89
+Application 1961357 resources: utime ~0s, stime ~0s, Rss ~8300, inblocks ~179, outblocks ~89
 
 === 02_create_context ===
 OpenCL context created
@@ -60,7 +60,7 @@ OpenCL context info:
   device id reference: 0x61a870
   platform:            NVIDIA CUDA
 OpenCL context released
-Application 1960924 resources: utime ~0s, stime ~2s, Rss ~166080, inblocks ~175, outblocks ~70
+Application 1961358 resources: utime ~0s, stime ~2s, Rss ~166080, inblocks ~175, outblocks ~70
 
 === 03_kernel_load_and_exec ===
 OpenCL context created
@@ -72,58 +72,68 @@ Lunched OpenCL kernel - setting all array elements to 3.14
 Output array: 
 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 
 Released OpenCL resources
-Application 1960925 resources: utime ~0s, stime ~2s, Rss ~166252, inblocks ~195, outblocks ~105
+Application 1961359 resources: utime ~0s, stime ~2s, Rss ~166252, inblocks ~195, outblocks ~105
 
 === 04_matrix_multiply ===
 Build output: 
 
 PASSED
-Application 1960926 resources: utime ~0s, stime ~2s, Rss ~166296, inblocks ~242, outblocks ~148
+Application 1961360 resources: utime ~0s, stime ~2s, Rss ~166288, inblocks ~242, outblocks ~144
 
 === 04_matrix_multiply - block ===
 Build output: 
 
 PASSED
-Application 1960927 resources: utime ~0s, stime ~2s, Rss ~166296, inblocks ~242, outblocks ~148
+Application 1961362 resources: utime ~0s, stime ~2s, Rss ~166296, inblocks ~242, outblocks ~144
 
 === 05_dot_product ===
 Build output: 
 
-7215 7215
+7201 7201
 PASSED
-Application 1960928 resources: utime ~0s, stime ~2s, Rss ~166292, inblocks ~223, outblocks ~149
+Application 1961363 resources: utime ~0s, stime ~2s, Rss ~166292, inblocks ~223, outblocks ~149
 
 === 06_matrix_multiply_timing ===
 Build output: 
 
 PASSED
-Elapsed time(ms): 0.41504
-Application 1960929 resources: utime ~1s, stime ~2s, Rss ~167972, inblocks ~248, outblocks ~148
+Elapsed time(ms): 0.421792
+Application 1961364 resources: utime ~1s, stime ~2s, Rss ~167972, inblocks ~248, outblocks ~148
 
 === 06_matrix_multiply_timing - block ===
 Build output: 
 
 PASSED
-Elapsed time(ms): 0.207648
-Application 1960930 resources: utime ~1s, stime ~2s, Rss ~167980, inblocks ~248, outblocks ~148
+Elapsed time(ms): 0.207008
+Application 1961365 resources: utime ~1s, stime ~2s, Rss ~167980, inblocks ~248, outblocks ~148
 
 === 07_convolution
 Build output: 
 
-Elapsed time: 0.080928 ms
+Elapsed time: 0.079488 ms
 PASSED
-Application 1960931 resources: utime ~0s, stime ~2s, Rss ~167744, inblocks ~250, outblocks ~154
+Application 1961366 resources: utime ~0s, stime ~2s, Rss ~167744, inblocks ~250, outblocks ~154
 
 === 07_convolution - read from images write to buffer
 Build output: 
 
-Elapsed time: 0.125216 ms
+Elapsed time: 0.117792 ms
 PASSED
-Application 1960932 resources: utime ~0s, stime ~2s, Rss ~167808, inblocks ~250, outblocks ~154
+Application 1961367 resources: utime ~0s, stime ~2s, Rss ~167808, inblocks ~250, outblocks ~154
 
 === 07_convolution - read from images write to image
 Build output: 
 
-Elapsed time: 0.132448 ms
+Elapsed time: 0.131584 ms
 PASSED
-Application 1960934 resources: utime ~0s, stime ~2s, Rss ~167880, inblocks ~342, outblocks ~158
+Application 1961368 resources: utime ~0s, stime ~2s, Rss ~167880, inblocks ~343, outblocks ~158
+
+=== 08_cpp - platform 0
+Elapsed time: 21536 ns.
+3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 
+Application 1961369 resources: utime ~0s, stime ~2s, Rss ~166204, inblocks ~234, outblocks ~224
+
+=== 08_cpp - platform 1
+Elapsed time: 70491 ns.
+3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 
+Application 1961370 resources: utime ~0s, stime ~0s, Rss ~23352, inblocks ~359, outblocks ~246
