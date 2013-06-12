@@ -3,6 +3,17 @@ Ideas for additional training material
 
 [done]Show how to pass compilation options to clBuildProgram
 
+[done] C++ wrapper api example
+
+[done]Images: perform same stencil computation on regular memory and image
+memory and compare the results; if using actual images link with FreeImage
+library
+
+[done]Binary kernels: create opencl compiler which outputs a binary kernel
+compiled for a scpecific device
+[todo]And a sample program which uses clCreateProgramWithBinary
+to load the kernel; add a utility function to perform compilation. 
+
 Show example of standard OpenCL compiler switches; in particular show how
 '-g' can be used to debug kernel code 
 
@@ -12,18 +23,9 @@ Show example with vector data types
 
 Show how to use pinned memory and memory mapping with clEnqueueMapBuffer
 
-[done - issues with nvidia cards]Images: perform same stencil computation on
-regular memory and image memory and compare the results; if using actual images
-link with FreeImage library 
-
 Concurrent/parallel use of multiple resources: contexts, kernels and command
 queues;show e.g. how run parallel kernels on different devices and/or
 parallel kernels on same device with different command queues
-
-[done]Binary kernels: create opencl compiler which outputs a binary kernel
-compiled for a scpecific device
-[todo]And a sample program which uses clCreateProgramWithBinary
-to load the kernel; add a utility function to perform compilation.
 
 Subregions, and offsets: restrict computation to a subset of the data and/or
 show how to run parallel kernels on different data regions; kernel launch on
@@ -41,8 +43,6 @@ async MPI api calls from within callback functions associated with events and
 by signaling the reception of data from MPI through user-defined events set to
 CL_COMPLETE which do in turn trigger host-device transfers and kernel execution.
 
-C++ wrapper api example
-
 OpenGL interop: show results of stencil computations through OpenCL(w/GLFW)
 
-OpenCL 1.2 ???
+OpenCL 1.2 ?

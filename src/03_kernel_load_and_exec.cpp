@@ -141,12 +141,12 @@ std::string load_text(const char* filepath) {
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
     if(argc < 6) {
-        std::cout << "usage: " << argv[0]
+        std::cerr << "usage: " << argv[0]
                   << " <platform name> <device type = default | cpu | gpu "
                      "| acc | all>  <device num> <OpenCL source file path>"
                      " <kernel name>"
                   << std::endl;
-        return 0; 
+        exit(EXIT_FAILURE);  
     }
     std::string platformName = argv[ 1 ];
     std::string deviceType = argv[2]; 

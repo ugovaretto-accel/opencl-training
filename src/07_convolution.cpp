@@ -316,7 +316,7 @@ bool check_result(const std::vector< real_t >& v1,
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
     if(argc < 9) {
-        std::cout << "usage:\n" << argv[0] << '\n'
+        std::cerr << "usage:\n" << argv[0] << '\n'
                   << "  <platform name>\n"
                      "  <device type = default | cpu | gpu | acc | all>\n"
                      "  <device num>\n"
@@ -329,7 +329,7 @@ int main(int argc, char** argv) {
                      "  filter size is 3x3; size - halo region size must be"
                      " evenly divisible by the workgroup size"
                   << std::endl;
-        return 0; 
+        exit(EXIT_FAILURE);   
     }
     bool image = false;
     if(std::string(argv[8]) == "image") {

@@ -11,4 +11,5 @@ g++ $SRC/05_dot_product.cpp $SRC/clutil.cpp -I$CLSDK/include -L$CLLIB/lib64 -lOp
 g++ $SRC/06_matrix_multiply_timing.cpp $SRC/clutil.cpp -I$CLSDK/include -L$CLLIB/lib64 -lOpenCL -o 06_matrix_multiply_timing
 g++ $SRC/07_convolution.cpp $SRC/clutil.cpp -I$CLSDK/include -L$CLLIB/lib64 -lOpenCL -o 07_convolution
 g++ -DWRITE_TO_IMAGE $SRC/07_convolution.cpp $SRC/clutil.cpp -I$CLSDK/include -L$CLLIB/lib64 -lOpenCL -o 07_convolution_image_write
+g++ $SRC/08_cpp.cpp -I$CLSDK/include -L$CLLIB/lib64 -lOpenCL -o 08_cpp
 g++ $SRC/cl-compiler.cpp $SRC/clutil.cpp -I$CLSDK/include -L$CLLIB/lib64 -lOpenCL -o clcc

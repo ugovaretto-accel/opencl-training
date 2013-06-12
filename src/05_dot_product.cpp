@@ -42,12 +42,12 @@ bool check_result(real_t v1, real_t v2, double eps) {
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
     if(argc < 6) {
-        std::cout << "usage: " << argv[0]
+        std::cerr << "usage: " << argv[0]
                   << " <platform name> <device type = default | cpu | gpu "
                      "| acc | all>  <device num> <OpenCL source file path>"
                      " <kernel name>"
                   << std::endl;
-        return 0; 
+        exit(EXIT_FAILURE);   
     }
     const int SIZE = 256;
     const size_t BYTE_SIZE = SIZE * sizeof(real_t);

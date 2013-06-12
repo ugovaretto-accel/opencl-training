@@ -56,12 +56,12 @@ bool check_result(const std::vector< real_t >& v1,
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
     if(argc < 6) {
-        std::cout << "usage: " << argv[0]
+        std::cerr << "usage: " << argv[0]
                   << " <platform name> <device type = default | cpu | gpu "
                      "| acc | all>  <device num> <OpenCL source file path>"
                      " <kernel name>"
                   << std::endl;
-        return 0; 
+        exit(EXIT_FAILURE);   
     }
     const int SIZE = 16; //16 x 16
     const size_t BYTE_SIZE = SIZE * SIZE * sizeof(real_t);
