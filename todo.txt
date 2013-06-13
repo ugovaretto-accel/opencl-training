@@ -14,6 +14,8 @@ compiled for a scpecific device
 [todo]And a sample program which uses clCreateProgramWithBinary
 to load the kernel; add a utility function to perform compilation. 
 
+[done]Show how to use pinned memory and memory mapping with clEnqueueMapBuffer
+
 Show example of standard OpenCL compiler switches; in particular show how
 '-g' can be used to debug kernel code 
 
@@ -21,13 +23,11 @@ Full block matrix multiply with non-square matrices
 
 Show example with vector data types
 
-Show how to use pinned memory and memory mapping with clEnqueueMapBuffer
-
 Concurrent/parallel use of multiple resources: contexts, kernels and command
 queues;show e.g. how run parallel kernels on different devices and/or
 parallel kernels on same device with different command queues
 
-Subregions, and offsets: restrict computation to a subset of the data and/or
+[?]Subregions, and offsets: restrict computation to a subset of the data and/or
 show how to run parallel kernels on different data regions; kernel launch on
 subregions is not supported by most OpenCL implementations.
 

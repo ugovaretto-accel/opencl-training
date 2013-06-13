@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
    
 
    try {
-      // Place the GPU devices of the first platform into a context
+      //place all devices from a platform into a context
       cl::Platform::get(&platforms);
       if(platforms.size() <= platformID) {
          std::cerr << "Platform id " << platformID << " is not available\n";
@@ -89,7 +89,8 @@ int main(int argc, char** argv) {
       // Configure event processing
       start = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_START>();
       end = profileEvent.getProfilingInfo<CL_PROFILING_COMMAND_END>();
-      std::cout << "Elapsed time: " << (end - start) << " ns." << std::endl;
+      std::cout << "Elapsed time: " << double(end - start) / 1E6
+                << " ms" << std::endl;
 
       //read and print data
       queue.enqueueReadBuffer(buffer,
@@ -106,7 +107,8 @@ int main(int argc, char** argv) {
 
    }
    catch(cl::Error e) {
-      std::cout << e.what() << ": Error code " << e.err() << std::endl;   
+      std::cerr << e.what() << ": Error code " << e.err() << std::endl;
+      exit(EXIT_FAILURE);   
    }
    return 0;
 }

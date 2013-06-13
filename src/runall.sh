@@ -28,5 +28,6 @@ echo $'\n=== 07_convolution - read from images write to image'
 $RUN $DIR/07_convolution_image_write "$PLATFORM" default 0 $CLSRC/07_stencil.cl filter_image 258 16 image
 echo $'\n=== 08_cpp - platform 0'
 $RUN $DIR/08_cpp 0 default $CLSRC/08_arrayset.cl arrayset
-echo $'\n=== 08_cpp - platform 1'
-$RUN $DIR/08_cpp 1 default $CLSRC/08_arrayset.cl arrayset
+echo $'\n=== 09_memcpy - if it fails try without page-locked switch'
+_128MB=134217728
+$RUN $DIR/09_memcpy 0 default 0 $_128MB page-locked 

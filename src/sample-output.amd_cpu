@@ -51,7 +51,7 @@ Device 0
   Local memory: 32768 bytes
 
 ===================================================
-Application 1961389 resources: utime ~0s, stime ~0s, Rss ~8300, inblocks ~179, outblocks ~89
+Application 1963760 resources: utime ~0s, stime ~0s, Rss ~8300, inblocks ~178, outblocks ~87
 
 === 02_create_context ===
 OpenCL context created
@@ -60,7 +60,7 @@ OpenCL context info:
   device id reference: 0x66f820
   platform:            AMD Accelerated Parallel Processing
 OpenCL context released
-Application 1961390 resources: utime ~0s, stime ~0s, Rss ~8236, inblocks ~175, outblocks ~70
+Application 1963761 resources: utime ~0s, stime ~0s, Rss ~8236, inblocks ~175, outblocks ~70
 
 === 03_kernel_load_and_exec ===
 OpenCL context created
@@ -70,52 +70,58 @@ Lunched OpenCL kernel - setting all array elements to 3.14
 Output array: 
 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 
 Released OpenCL resources
-Application 1961391 resources: utime ~0s, stime ~0s, Rss ~23396, inblocks ~320, outblocks ~127
+Application 1963762 resources: utime ~0s, stime ~0s, Rss ~23392, inblocks ~320, outblocks ~127
 
 === 04_matrix_multiply ===
 PASSED
-Application 1961392 resources: utime ~0s, stime ~0s, Rss ~25052, inblocks ~473, outblocks ~221
+Application 1963763 resources: utime ~0s, stime ~0s, Rss ~25052, inblocks ~472, outblocks ~219
 
 === 04_matrix_multiply - block ===
 PASSED
-Application 1961395 resources: utime ~0s, stime ~0s, Rss ~25532, inblocks ~473, outblocks ~221
+Application 1963764 resources: utime ~0s, stime ~0s, Rss ~25532, inblocks ~472, outblocks ~219
 
 === 05_dot_product ===
-7553 7553
+7183 7183
 PASSED
-Application 1961396 resources: utime ~0s, stime ~0s, Rss ~24992, inblocks ~381, outblocks ~188
+Application 1963765 resources: utime ~0s, stime ~0s, Rss ~24992, inblocks ~380, outblocks ~183
 
 === 06_matrix_multiply_timing ===
 PASSED
-Elapsed time(ms): 4.34459
-Application 1961397 resources: utime ~1s, stime ~0s, Rss ~25108, inblocks ~481, outblocks ~224
+Elapsed time(ms): 4.28404
+Application 1963766 resources: utime ~1s, stime ~0s, Rss ~25112, inblocks ~480, outblocks ~223
 
 === 06_matrix_multiply_timing - block ===
 PASSED
-Elapsed time(ms): 23.7265
-Application 1961398 resources: utime ~1s, stime ~0s, Rss ~41432, inblocks ~481, outblocks ~224
+Elapsed time(ms): 23.3421
+Application 1963767 resources: utime ~1s, stime ~0s, Rss ~41432, inblocks ~480, outblocks ~223
 
 === 07_convolution
-Elapsed time: 0.753228 ms
+Elapsed time: 0.754007 ms
 PASSED
-Application 1961399 resources: utime ~0s, stime ~0s, Rss ~25600, inblocks ~568, outblocks ~310
+Application 1963768 resources: utime ~0s, stime ~0s, Rss ~25600, inblocks ~566, outblocks ~307
 
 === 07_convolution - read from images write to buffer
-Elapsed time: 3.00995 ms
+Elapsed time: 2.95346 ms
 PASSED
-Application 1961400 resources: utime ~0s, stime ~0s, Rss ~25604, inblocks ~568, outblocks ~310
+Application 1963769 resources: utime ~0s, stime ~0s, Rss ~25604, inblocks ~566, outblocks ~306
 
 === 07_convolution - read from images write to image
-Elapsed time: 2.96632 ms
+Elapsed time: 2.95258 ms
 PASSED
-Application 1961401 resources: utime ~0s, stime ~0s, Rss ~25748, inblocks ~713, outblocks ~461
+Application 1963770 resources: utime ~0s, stime ~0s, Rss ~25740, inblocks ~712, outblocks ~455
 
 === 08_cpp - platform 0
-Elapsed time: 21664 ns.
+Elapsed time: 0.021408 ms
 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 
-Application 1961402 resources: utime ~0s, stime ~2s, Rss ~166204, inblocks ~234, outblocks ~224
+Application 1963771 resources: utime ~0s, stime ~2s, Rss ~166196, inblocks ~209, outblocks ~149
 
-=== 08_cpp - platform 1
-Elapsed time: 58709 ns.
-3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 3.14 
-Application 1961403 resources: utime ~0s, stime ~0s, Rss ~23352, inblocks ~359, outblocks ~246
+=== 09_memcpy - if it fails try without page-locked switch
+Elapsed time (ms):
+  host to device:               292.447
+  device to host:               31.8249
+  device to device:             294.584
+Bandwidth(GB/s):
+  host to device:               0.427428
+  device to host:               3.92774
+  device to device:             0.848654
+Application 1963772 resources: utime ~1s, stime ~1s, Rss ~404624, inblocks ~192, outblocks ~119
