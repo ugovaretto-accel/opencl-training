@@ -184,7 +184,6 @@ void print_devices(cl_platform_id pid) {
             exit(EXIT_FAILURE);
         }
         std::cout << "  Name: " << &buf[0] << std::endl; 
-        std::fill(buf.begin(), buf.end(), char(0));
         // device version
         status = clGetDeviceInfo(*i, CL_DEVICE_VERSION,
                                  buf.size(), &buf[0], 0);
@@ -194,7 +193,6 @@ void print_devices(cl_platform_id pid) {
             exit(EXIT_FAILURE);
         }
         std::cout << "  Version: " << &buf[0] << std::endl; 
-        std::fill(buf.begin(), buf.end(), char(0));
         // device vendor
         status = clGetDeviceInfo(*i, CL_DEVICE_VENDOR,
                                  buf.size(), &buf[0], 0);
@@ -204,7 +202,6 @@ void print_devices(cl_platform_id pid) {
             exit(EXIT_FAILURE);
         }
         std::cout << "  Vendor: " << &buf[0] << std::endl; 
-        std::fill(buf.begin(), buf.end(), char(0));
         // device profile
         status = clGetDeviceInfo(*i, CL_DEVICE_PROFILE,
                                  buf.size(), &buf[0], 0);
@@ -214,7 +211,6 @@ void print_devices(cl_platform_id pid) {
             exit(EXIT_FAILURE);
         }
         std::cout << "  Profile: " << &buf[0] << std::endl; 
-        std::fill(buf.begin(), buf.end(), char(0));
         // # compute units
         status = clGetDeviceInfo(*i, CL_DEVICE_MAX_COMPUTE_UNITS,
                                  sizeof(cl_uint), &d, 0);

@@ -9,7 +9,7 @@
 #include <iterator>
 #include <cstdlib>
 
-//standard cl C++ wrapper include:
+//standard OpenCL C++ wrapper include:
 //http://www.khronos.org/registry/cl/api/1.1/cl.hpp
 #include "cl.hpp"
 
