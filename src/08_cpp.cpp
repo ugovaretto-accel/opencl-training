@@ -1,4 +1,4 @@
-//C++ example: shows how little code is required (in fact less than in CUDA C),
+//C++ example: shows how little code is required (in fact less than CUDA),
 //when using OpenCL through the C++ api
 //Author: Ugo Varetto
 #define __CL_ENABLE_EXCEPTIONS
