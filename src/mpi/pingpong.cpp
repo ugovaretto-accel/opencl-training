@@ -52,11 +52,11 @@ int main(int argc, char** argv) {
     } 
     const int deviceID = atoi(argv[3]);
     const size_t SIZE = atoll(argv[4]);
+    const size_t BYTE_SIZE = SIZE * sizeof(real_t);
     // init MPI environment
     MPI_Init(&argc, &argv);
     int task = -1;
-    const size_t SIZE = atoi(argv[1]);
-    const size_t BYTE_SIZE = size * sizeof(double);
+   
     MPI_Comm_rank(MPI_COMM_WORLD, &task);
     try {
        
@@ -64,7 +64,8 @@ int main(int argc, char** argv) {
         cl::Platform::get(&platforms);
         if(platforms.size() <= platformID) {
             std::cerr << "Platform id " << platformID << " is not available\n";
-        exit(EXIT_FAILURE);
+            exit(EXIT_FAILURE);
+        }
    
         platforms[platformID].getDevices(deviceType, &devices);
         cl::Context context(devices);
@@ -76,10 +77,10 @@ int main(int argc, char** argv) {
         cl::Buffer devData1(context,
                             CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                             BYTE_SIZE,
-                            const_cast< void* >(&data[0]));
+                            const_cast< double* >(&data[0]));
         //device buffer #2
         cl::Buffer devData2(context,
-                            CL_MEM_READ | CL_MEM_ALLOC_HOST_PTR,
+                            CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
                             BYTE_SIZE,
                             0);
         //process data on the GPU(set to MPI id)  
@@ -98,10 +99,10 @@ int main(int argc, char** argv) {
         cl::Program initProgram(context, initSource);
         initProgram.build(devices);
         cl::Kernel initKernel(initProgram, "arrayset");        
-        initKernel.setArg(0, buffer);
+        initKernel.setArg(0, devData1);
         initKernel.setArg(1, real_t(task));
        
-        queue.enqueueNDRangeKernel(kernel,
+        queue.enqueueNDRangeKernel(initKernel,
                                  cl::NDRange(0),
                                  cl::NDRange(SIZE),
                                  cl::NDRange(1),
@@ -139,6 +140,7 @@ int main(int argc, char** argv) {
             source = 0;
             dest   = 0;
         }
+        MPI_Status status;
         MPI_Isend(sendHostPtr, SIZE, MPI_DOUBLE, dest,
                   tag0to1, MPI_COMM_WORLD, &send_req);
         MPI_Irecv(recvHostPtr, SIZE, MPI_DOUBLE, source,
@@ -181,11 +183,12 @@ int main(int argc, char** argv) {
                                                0,
                                                0));
         const int value = 1; // task id 0 + task id 1
+        const std::vector< real_t > reference(SIZE, value);
         if(std::equal(computedDataHPtr, computedDataHPtr + SIZE,
-                      real_t(1)) {
-            std::cout << '[' << taks << "]: PASSED" << std::endl;
+                      reference.begin())) {
+            std::cout << '[' << task << "]: PASSED" << std::endl;
         } else {
-            std::cout << '[' << taks << "]: FAILED" << std::endl;
+            std::cout << '[' << task << "]: FAILED" << std::endl;
         }
 
         MPI_Finalize();
