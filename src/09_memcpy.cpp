@@ -234,7 +234,7 @@ int main(int argc, char** argv) {
       cl::Context context(devices);
       
       //create command queue to use for copy operations
-      cl::CommandQueue queue(context, devices[0], CL_QUEUE_PROFILING_ENABLE);
+      cl::CommandQueue queue(context, devices[deviceID], CL_QUEUE_PROFILING_ENABLE);
 
       ByteArray data(SIZE);
       const double h2d = copy_host_to_device(data, context, queue);
