@@ -18,6 +18,7 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include <stdexcept>
 #include <mpi.h> // <-!
 #include "../cl.hpp"
 
@@ -74,12 +75,12 @@ int main(int argc, char** argv) {
 
         std::vector< real_t > data(SIZE, -1);
         //device buffer #1
-        cl::Buffer devData1(context,
+        cl::Buffer devData(context,
                             CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
                             BYTE_SIZE,
                             const_cast< double* >(&data[0]));
         //device buffer #2
-        cl::Buffer devData2(context,
+        cl::Buffer devRecvData(context,
                             CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
                             BYTE_SIZE,
                             0);
@@ -99,7 +100,7 @@ int main(int argc, char** argv) {
         cl::Program initProgram(context, initSource);
         initProgram.build(devices);
         cl::Kernel initKernel(initProgram, "arrayset");        
-        initKernel.setArg(0, devData1);
+        initKernel.setArg(0, devData);
         initKernel.setArg(1, real_t(task));
        
         queue.enqueueNDRangeKernel(initKernel,
@@ -109,16 +110,17 @@ int main(int argc, char** argv) {
                                  0, // wait events *
                                  0);        
 
-        void* sendHostPtr = queue.enqueueMapBuffer(devData1,
+        void* sendHostPtr = queue.enqueueMapBuffer(devData,
                                                CL_FALSE,
                                                CL_MAP_READ,
                                                0,
                                                BYTE_SIZE,
                                                0,
                                                0);
+        if(sendHostPtr == 0) throw std::runtime_error("NULL mapped ptr");
     
         queue.finish();
-        void* recvHostPtr = queue.enqueueMapBuffer(devData2,
+        void* recvHostPtr = queue.enqueueMapBuffer(devRecvData,
                                                CL_TRUE,
                                                CL_MAP_WRITE,
                                                0,
@@ -126,7 +128,8 @@ int main(int argc, char** argv) {
                                                0,
                                                0);
 
-    
+        if(recvHostPtr == 0) throw std::runtime_error("NULL mapped ptr");
+
         const int tag0to1 = 0x01;
         const int tag1to0 = 0x10;
         MPI_Request send_req;
@@ -146,9 +149,9 @@ int main(int argc, char** argv) {
         MPI_Irecv(recvHostPtr, SIZE, MPI_DOUBLE, source,
                   tag1to0, MPI_COMM_WORLD, &recv_req);
         MPI_Wait(&recv_req, &status);
-        queue.enqueueUnmapMemObject(devData2, recvHostPtr, 0, 0);
+        queue.enqueueUnmapMemObject(devRecvData, recvHostPtr, 0, 0);
         MPI_Wait(&send_req, &status);
-        queue.enqueueUnmapMemObject(devData1, sendHostPtr, 0, 0);
+        queue.enqueueUnmapMemObject(devData, sendHostPtr, 0, 0);
 
         //note that instead of having each process compile the code
         //you could e.g. send the size and content of the source buffer
@@ -171,11 +174,11 @@ int main(int argc, char** argv) {
         cl::Program computeProgram(context, computeSource);
         computeProgram.build(devices);
         cl::Kernel computeKernel(computeProgram, "sum");        
-        computeKernel.setArg(0, devData2);
-        computeKernel.setArg(1, devData1);
+        computeKernel.setArg(0, devRecvData);
+        computeKernel.setArg(1, devData);
 
         real_t* computedDataHPtr = reinterpret_cast< real_t* >(
-                                        queue.enqueueMapBuffer(devData2,
+                                        queue.enqueueMapBuffer(devRecvData,
                                                CL_TRUE,
                                                CL_MAP_WRITE,
                                                0,
