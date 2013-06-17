@@ -76,17 +76,19 @@ int main(int argc, char** argv) {
         std::vector< real_t > data(SIZE, -1);
         //device buffer #1
         cl::Buffer devData(context,
-                            CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
+                            CL_MEM_READ_WRITE 
+                            | CL_MEM_ALLOC_HOST_PTR
+                            | CL_MEM_COPY_HOST_PTR,
                             BYTE_SIZE,
                             const_cast< double* >(&data[0]));
         //device buffer #2
         cl::Buffer devRecvData(context,
                             CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
-                            BYTE_SIZE,
-                            0);
+                            BYTE_SIZE);
         //process data on the GPU(set to MPI id)  
         const char CLCODE_INIT[] =
-            "typedef double real_t"
+            "#pragma OPENCL EXTENSION cl_khr_fp64: enable\n"
+            "typedef double real_t;\n"
             "__kernel void arrayset(__global real_t* outputArray,\n"
             "                       real_t value) {\n"
             "//get global thread id for dimension 0\n"
@@ -94,9 +96,9 @@ int main(int argc, char** argv) {
             "outputArray[id] = value;\n" 
             "}";
     
-        cl::Program::Sources initSource(1, std::make_pair(CLCODE_INIT,
-                                        0)); // 0 means that the source strings
-                                             // are NULL terminated
+        cl::Program::Sources initSource(1, 
+                                        std::make_pair(CLCODE_INIT,
+                                                       sizeof(CLCODE_INIT)));
         cl::Program initProgram(context, initSource);
         initProgram.build(devices);
         cl::Kernel initKernel(initProgram, "arrayset");        
@@ -162,15 +164,16 @@ int main(int argc, char** argv) {
 
         //process data on the GPU(set to MPI id)  
         const char CLCODE_COMPUTE[] =
-            "typedef double real_t"
+            "#pragma OPENCL EXTENSION cl_khr_fp64: enable\n"
+            "typedef double real_t;\n"
             "__kernel void sum( __global const real_t* in,\n"
             "                   __global real_t* inout) {\n"
             "const int id = get_global_id(0);\n"
             "inout[id] += in[id];\n" 
             "}";
-        cl::Program::Sources computeSource(1, std::make_pair(CLCODE_COMPUTE,
-                                           0)); // 0 means that the source strings
-                                             // are NULL terminated
+        cl::Program::Sources computeSource(1,
+                                           std::make_pair(CLCODE_COMPUTE,
+                                                          sizeof(CLCODE_COMPUTE)));
         cl::Program computeProgram(context, computeSource);
         computeProgram.build(devices);
         cl::Kernel computeKernel(computeProgram, "sum");        
