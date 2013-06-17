@@ -25,11 +25,33 @@ typedef double real_t;
 
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
-    if(argc != 2) {
+    if(argc < 5) {
         std::cout << "usage: " << argv[0]
-                  << " <number of double prec. elements>"
-                  << std::endl;
+                << " <platform id(0, 1...)>"
+                   " <device type: default | cpu | gpu | acc>"
+                   " <OpenCL source>"
+                   " <kernel function name>\n"
+                   "Must use kernel that sets all the element of an array to"
+                   " a value and accepts an output buffer and an int"
+                << std::endl; 
+        exit(EXIT_FAILURE);          
     }
+    std::vector<cl::Platform> platforms;
+    std::vector<cl::Device> devices;
+    const int platformID = atoi(argv[1]);
+    cl_device_type deviceType;
+    const std::string kernelName(argv[4]);
+    const std::string dt = std::string(argv[2]);
+    if(dt == "default") deviceType = CL_DEVICE_TYPE_DEFAULT;
+    else if(dt == "cpu") deviceType = CL_DEVICE_TYPE_CPU;
+    else if(dt == "gpu") deviceType = CL_DEVICE_TYPE_GPU;
+    else if(dt == "acc") deviceType = CL_DEVICE_TYPE_ACCELERATOR;
+    else {
+      std::cerr << "ERROR - unrecognized device type " << dt << std::endl;
+      exit(EXIT_FAILURE);
+    } 
+    const int deviceID = atoi(argv[3]);
+    const size_t SIZE = atoll(argv[4]);
     // init MPI environment
     MPI_Init(&argc, &argv);
     int task = -1;
@@ -37,6 +59,7 @@ int main(int argc, char** argv) {
     const size_t BYTE_SIZE = size * sizeof(double);
     MPI_Comm_rank(MPI_COMM_WORLD, &task);
     try {
+       
         //OpenCL init
         cl::Platform::get(&platforms);
         if(platforms.size() <= platformID) {
