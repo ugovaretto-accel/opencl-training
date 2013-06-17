@@ -3,8 +3,12 @@
 
 //1) init data and copy to device; OpenCL kernels initialize data
 //   with the MPI process id
-//2) exchange data between devices
-//3) copy data from device to host and validate
+//2) exchange data between nodes: copy data in/out of OpenCL buffers
+//   through map/unmap
+//3) execute OpenCL kernel: local data are incremented with the values
+//   received from the other node
+//4) copy data to host and validate: all values must be equal to
+//   task id 0 + task id 1 = 1
 
 
 // compilation:                                                                     
@@ -12,6 +16,8 @@
 //        -I <path to OpenCL include dir> \
 //        -L <path to OpenCL lib dir> \
 //        -lOpenCL
+// execution(MVAPICH2): 
+// mpiexec.hydra -n 2 -ppn 1 ./pp 0 default 0 128
 
 #define __CL_ENABLE_EXCEPTIONS
 
@@ -28,13 +34,11 @@ typedef double real_t;
 int main(int argc, char** argv) {
     if(argc < 5) {
         std::cout << "usage: " << argv[0]
-                << " <platform id(0, 1...)>"
+                << " <platform id(0, 1, ...)>"
                    " <device type: default | cpu | gpu | acc>"
-                   " <OpenCL source>"
-                   " <kernel function name>\n"
-                   "Must use kernel that sets all the element of an array to"
-                   " a value and accepts an output buffer and an int"
-                << std::endl; 
+                   " <device id(0, 1, ...)>"
+                   " <number of double prec. elements>\n";
+
         exit(EXIT_FAILURE);          
     }
     std::vector<cl::Platform> platforms;
@@ -108,17 +112,14 @@ int main(int argc, char** argv) {
         queue.enqueueNDRangeKernel(initKernel,
                                  cl::NDRange(0),
                                  cl::NDRange(SIZE),
-                                 cl::NDRange(1),
-                                 0, // wait events *
-                                 0);        
+                                 cl::NDRange(1));
 
         void* sendHostPtr = queue.enqueueMapBuffer(devData,
                                                CL_FALSE,
                                                CL_MAP_READ,
                                                0,
-                                               BYTE_SIZE,
-                                               0,
-                                               0);
+                                               BYTE_SIZE);
+
         if(sendHostPtr == 0) throw std::runtime_error("NULL mapped ptr");
     
         queue.finish();
@@ -126,9 +127,7 @@ int main(int argc, char** argv) {
                                                CL_TRUE,
                                                CL_MAP_WRITE,
                                                0,
-                                               BYTE_SIZE,
-                                               0,
-                                               0);
+                                               BYTE_SIZE);
 
         if(recvHostPtr == 0) throw std::runtime_error("NULL mapped ptr");
 
@@ -145,15 +144,23 @@ int main(int argc, char** argv) {
             source = 0;
             dest   = 0;
         }
+
         MPI_Status status;
-        MPI_Isend(sendHostPtr, SIZE, MPI_DOUBLE, dest,
-                  tag0to1, MPI_COMM_WORLD, &send_req);
-        MPI_Irecv(recvHostPtr, SIZE, MPI_DOUBLE, source,
-                  tag1to0, MPI_COMM_WORLD, &recv_req);
+        if(task == 0) {
+            MPI_Isend(sendHostPtr, SIZE, MPI_DOUBLE, dest,
+                      tag0to1, MPI_COMM_WORLD, &send_req);
+            MPI_Irecv(recvHostPtr, SIZE, MPI_DOUBLE, source,
+                      tag1to0, MPI_COMM_WORLD, &recv_req);
+        } else {
+            MPI_Isend(sendHostPtr, SIZE, MPI_DOUBLE, dest,
+                      tag1to0, MPI_COMM_WORLD, &send_req);
+            MPI_Irecv(recvHostPtr, SIZE, MPI_DOUBLE, source,
+                      tag0to1, MPI_COMM_WORLD, &recv_req);
+        }
         MPI_Wait(&recv_req, &status);
-        queue.enqueueUnmapMemObject(devRecvData, recvHostPtr, 0, 0);
+        queue.enqueueUnmapMemObject(devRecvData, recvHostPtr);
         MPI_Wait(&send_req, &status);
-        queue.enqueueUnmapMemObject(devData, sendHostPtr, 0, 0);
+        queue.enqueueUnmapMemObject(devData, sendHostPtr);
 
         //note that instead of having each process compile the code
         //you could e.g. send the size and content of the source buffer
@@ -180,14 +187,19 @@ int main(int argc, char** argv) {
         computeKernel.setArg(0, devRecvData);
         computeKernel.setArg(1, devData);
 
+        queue.enqueueNDRangeKernel(computeKernel,
+                                 cl::NDRange(0),
+                                 cl::NDRange(SIZE),
+                                 cl::NDRange(1));
+        
         real_t* computedDataHPtr = reinterpret_cast< real_t* >(
-                                        queue.enqueueMapBuffer(devRecvData,
-                                               CL_TRUE,
-                                               CL_MAP_WRITE,
+                                        queue.enqueueMapBuffer(devData,
+                                               CL_FALSE,
+                                               CL_MAP_READ,
                                                0,
-                                               BYTE_SIZE,
-                                               0,
-                                               0));
+                                               BYTE_SIZE));
+        queue.finish();
+
         const int value = 1; // task id 0 + task id 1
         const std::vector< real_t > reference(SIZE, value);
         if(std::equal(computedDataHPtr, computedDataHPtr + SIZE,
@@ -196,7 +208,7 @@ int main(int argc, char** argv) {
         } else {
             std::cout << '[' << task << "]: FAILED" << std::endl;
         }
-
+        queue.enqueueUnmapMemObject(devData, computedDataHPtr);
         MPI_Finalize();
     } catch(cl::Error e) {
       std::cerr << e.what() << ": Error code " << e.err() << std::endl;
