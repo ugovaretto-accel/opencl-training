@@ -1,4 +1,4 @@
-//OpenCL/MPI ping pong test
+//OpenCL/MPI example
 //Author: Ugo Varetto 
 
 //1) init data and copy to device; OpenCL kernels initialize data
@@ -78,18 +78,18 @@ int main(int argc, char** argv) {
                                CL_QUEUE_PROFILING_ENABLE);
 
         std::vector< real_t > data(SIZE, -1);
-        //device buffer #1
+        //device buffer #1: holds local data
         cl::Buffer devData(context,
                             CL_MEM_READ_WRITE 
                             | CL_MEM_ALLOC_HOST_PTR
                             | CL_MEM_COPY_HOST_PTR,
                             BYTE_SIZE,
                             const_cast< double* >(&data[0]));
-        //device buffer #2
+        //device buffer #2: holds data received from other node
         cl::Buffer devRecvData(context,
                             CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
                             BYTE_SIZE);
-        //process data on the GPU(set to MPI id)  
+        //process data on the GPU(set array elements to local MPI id)  
         const char CLCODE_INIT[] =
             "#pragma OPENCL EXTENSION cl_khr_fp64: enable\n"
             "typedef double real_t;\n"
@@ -114,6 +114,8 @@ int main(int argc, char** argv) {
                                  cl::NDRange(SIZE),
                                  cl::NDRange(1));
 
+        //perform data exchange:
+        //1) map device buffers to host memory
         void* sendHostPtr = queue.enqueueMapBuffer(devData,
                                                CL_FALSE,
                                                CL_MAP_READ,
@@ -122,15 +124,16 @@ int main(int argc, char** argv) {
 
         if(sendHostPtr == 0) throw std::runtime_error("NULL mapped ptr");
     
-        queue.finish();
         void* recvHostPtr = queue.enqueueMapBuffer(devRecvData,
-                                               CL_TRUE,
+                                               CL_FALSE,
                                                CL_MAP_WRITE,
                                                0,
                                                BYTE_SIZE);
-
+       
         if(recvHostPtr == 0) throw std::runtime_error("NULL mapped ptr");
+        queue.finish();
 
+        //2) copy data to from remote process
         const int tag0to1 = 0x01;
         const int tag1to0 = 0x10;
         MPI_Request send_req;
@@ -157,6 +160,8 @@ int main(int argc, char** argv) {
             MPI_Irecv(recvHostPtr, SIZE, MPI_DOUBLE, source,
                       tag0to1, MPI_COMM_WORLD, &recv_req);
         }
+        //3) as soon as data is copied do unmap buffers, indirectlry
+        //   triggering a host --> device copy
         MPI_Wait(&recv_req, &status);
         queue.enqueueUnmapMemObject(devRecvData, recvHostPtr);
         MPI_Wait(&send_req, &status);
@@ -169,7 +174,8 @@ int main(int argc, char** argv) {
         //in the case of source code compilation hybrid systems are
         //automatically supported by OpenCL
 
-        //process data on the GPU(set to MPI id)  
+        //process data on the GPU: increment local data array with value
+        //received from other process
         const char CLCODE_COMPUTE[] =
             "#pragma OPENCL EXTENSION cl_khr_fp64: enable\n"
             "typedef double real_t;\n"
@@ -192,6 +198,7 @@ int main(int argc, char** argv) {
                                  cl::NDRange(SIZE),
                                  cl::NDRange(1));
         
+        //map device data to host memory for validation and output
         real_t* computedDataHPtr = reinterpret_cast< real_t* >(
                                         queue.enqueueMapBuffer(devData,
                                                CL_FALSE,
@@ -208,7 +215,9 @@ int main(int argc, char** argv) {
         } else {
             std::cout << '[' << task << "]: FAILED" << std::endl;
         }
+        //release mapped pointer
         queue.enqueueUnmapMemObject(devData, computedDataHPtr);
+        //release MPI resources
         MPI_Finalize();
     } catch(cl::Error e) {
       std::cerr << e.what() << ": Error code " << e.err() << std::endl;
