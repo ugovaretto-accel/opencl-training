@@ -1,5 +1,5 @@
 #pragma once
-//Utility functions
+//OpenCL utility functions
 //Author: Ugo Varetto
 #include <string>
 
