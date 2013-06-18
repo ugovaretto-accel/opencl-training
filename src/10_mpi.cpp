@@ -15,9 +15,9 @@
 // mpicxx ../../../scratch/mpi-pingpong-gpu.cpp \
 //        -I <path to OpenCL include dir> \
 //        -L <path to OpenCL lib dir> \
-//        -lOpenCL
+//        -lOpenCL -o 10_mpi
 // execution(MVAPICH2): 
-// mpiexec.hydra -n 2 -ppn 1 ./pp 0 default 0 128
+// mpiexec.hydra -n 2 -ppn 1 ./10_mpi 0 default 0 128
 
 #define __CL_ENABLE_EXCEPTIONS
 
@@ -26,7 +26,7 @@
 #include <vector>
 #include <stdexcept>
 #include <mpi.h> // <-!
-#include "../cl.hpp"
+#include "cl.hpp"
 
 typedef double real_t; 
 
