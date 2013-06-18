@@ -1,22 +1,22 @@
 Ideas for additional training material
 --------------------------------------
 
-[done]Show how to pass compilation options to clBuildProgram
+[done] Show how to pass compilation options to clBuildProgram
 
 [done] C++ wrapper api example
 
-[done]Images: perform same stencil computation on regular memory and image
+[done] Images: perform same stencil computation on regular memory and image
 memory and compare the results; if using actual images link with FreeImage
 library
 
-[done]Binary kernels: create opencl compiler which outputs a binary kernel
+[done] Binary kernels: create opencl compiler which outputs a binary kernel
 compiled for a scpecific device
 [todo]And a sample program which uses clCreateProgramWithBinary
 to load the kernel; add a utility function to perform compilation. 
 
-[done]Show how to use pinned memory and memory mapping with clEnqueueMapBuffer
+[done] Show how to use pinned memory and memory mapping with clEnqueueMapBuffer
 
-[done]MPI
+[done] MPI
 
 Show example of standard OpenCL compiler switches; in particular show how
 '-g' can be used to debug kernel code 
