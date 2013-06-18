@@ -81,8 +81,8 @@ int main(int argc, char** argv) {
         //device buffer #1: holds local data
         cl::Buffer devData(context,
                             CL_MEM_READ_WRITE 
-                            | CL_MEM_ALLOC_HOST_PTR
-                            | CL_MEM_COPY_HOST_PTR,
+                            | CL_MEM_ALLOC_HOST_PTR //<-- page locked memory
+                            | CL_MEM_COPY_HOST_PTR, //<-- copy data from 'data'
                             BYTE_SIZE,
                             const_cast< double* >(&data[0]));
         //device buffer #2: holds data received from other node
