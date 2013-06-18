@@ -131,6 +131,7 @@ int main(int argc, char** argv) {
                                                BYTE_SIZE);
        
         if(recvHostPtr == 0) throw std::runtime_error("NULL mapped ptr");
+
         queue.finish();
 
         //2) copy data to from remote process
@@ -205,6 +206,8 @@ int main(int argc, char** argv) {
                                                CL_MAP_READ,
                                                0,
                                                BYTE_SIZE));
+        if(computedDataHPtr == 0) throw std::runtime_error("NULL mapped ptr");
+
         queue.finish();
 
         const int value = 1; // task id 0 + task id 1
