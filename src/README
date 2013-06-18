@@ -40,10 +40,9 @@ Run:
 salloc -N1
 aprun ./a.out ...
 
-In case the AMD-APP-SDK is installed on the machine it is
-possible to access two OpenCL platforms (CPU and GPU) by
-loading the AMD-APP-SDK module before running the executable.
-
+In case the AMD-APP-SDK is installed on the machine it is possible to access
+two OpenCL platforms (AMD and NVIDIA) with one OpenCL device (AMD CPU and NVIDIA GPU) each
+by loading the AMD-APP-SDK module before running the executable.
 
 Output of 01_device_query example:
 
