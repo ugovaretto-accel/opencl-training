@@ -11,6 +11,18 @@ run-time.
 
 Look at the ".sh" scripts for information on how to build and run examples. 
 
+Structure
+---------
+
+Examples # 1-3: self contained, with all the required boilerplate code in the
+same C++source file
+
+Examples # 4-7: boilerplate code from examples 1-3 is moved into a small library;
+need to compile and link with clutil.cpp
+
+Examples # > 7: use of OpenCL C++ API for automatic resource management
+
+
 Cray XK-7 with CUDA 5 installed
 -------------------------------
 
