@@ -9,6 +9,12 @@
 #include <iterator>
 #include <cstdlib>
 
+//Note: all C++ wrapper classes are derived from a base Wrapper class
+//which returns the wrapped element through calls to Wrapper::operator()();
+//e.g. to get access to the cl_platform_id value from a cl::Platform object
+//simply call the () operator: cl_platform_id p = platform();
+
+
 //standard OpenCL C++ wrapper include:
 //http://www.khronos.org/registry/cl/api/1.1/cl.hpp
 #include "cl.hpp"
