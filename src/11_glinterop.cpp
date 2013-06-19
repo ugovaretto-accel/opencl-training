@@ -1,7 +1,6 @@
 //OpenGL-CL interop
 //Author: Ugo Varetto
-////// IN PROGRESS ////////
-////// REQUIRES GLFW ////////
+//compilation:
 //g++ ../src/11_glinterop.cpp ../src/gl-cl.cpp -I/usr/local/glfw/include \
 // -DGL_GLEXT_PROTOTYPES -L/usr/local/glfw/lib -lglfw \
 // -I/usr/local/cuda/include -lOpenCL
