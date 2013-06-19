@@ -16,18 +16,19 @@
 
 #ifdef __APPLE__
  #include <OpenCL/cl.h>
+ #include <OpenCL/cl_gl.h> 
 #else
  #include <CL/cl.h>
+ #include <CL/cl_gl.h> 
 #endif
 
 
-typedef std::vector< cl_context_properties > CLContextProperties;
+typedef std::vector< cl_context_properties > CLProperties;
 
 //when using the C++ API pass cl::Platform::operator()() to access
 //the wrapped cl_platform_id resource
 
-CLContextProperties create_cl_gl_interop_properties(
-                                                cl_platform_id platform = 0) {
+CLProperties create_cl_gl_interop_properties(cl_platform_id platform = 0) {
 #if defined (__APPLE__) || defined(MACOSX)
     CGLContextObj kCGLContext = CGLGetCurrentContext();
     CGLShareGroupObj kCGLShareGroup = CGLGetShareGroup(kCGLContext);

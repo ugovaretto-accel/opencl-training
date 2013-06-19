@@ -2,8 +2,12 @@
 //Author: Ugo Varetto
 ////// IN PROGRESS ////////
 ////// REQUIRES GLFW ////////
+//g++ ../src/11_glinterop.cpp ../src/gl-cl.cpp -I/usr/local/glfw/include \
+// -DGL_GLEXT_PROTOTYPES -L/usr/local/glfw/lib -lglfw \
+// -I/usr/local/cuda/include -lOpenCL
 
 #include <GLFW/glfw3.h>
+#include <CL/cl.h>
 #include <cstdlib>
 #include <iostream>
 
@@ -40,7 +44,7 @@ int main(int, char**) {
     glfwSetKeyCallback(window, key_callback);
 
     //geometry
-    float vertices = {-0.6f, -0.4f, 0.f,
+    float vertices[] = {-0.6f, -0.4f, 0.f,
                        0.6f, -0.4f, 0.f,
                        0.f,   0.6f, 0.f};
 
@@ -49,11 +53,11 @@ int main(int, char**) {
     glGenBuffers(1, &vbo_);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glBufferData(GL_ARRAY_BUFFER, 9 * sizeof( float ),
-                 &vertices_[ 0 ], GL_STATIC_DRAW );
+                 &vertices[ 0 ], GL_STATIC_DRAW );
     glBindBuffer( GL_ARRAY_BUFFER, 0 ); 
 
-    while (!glfwWindowShouldClose(window))
-    {
+    //rendering loop
+    while (!glfwWindowShouldClose(window)) {
         float ratio;
         int width, height;
 
