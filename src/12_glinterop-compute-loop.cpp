@@ -6,10 +6,11 @@
 
 /////////// IN PROGRESS //////////////////
 
-
-//g++ ../src/... ../src/gl-cl.cpp -I/usr/local/glfw/include \
+//g++ ../src/12_glinterop-compute-loop.cpp \
+// ../src/gl-cl.cpp -I/usr/local/glfw/include \
 // -DGL_GLEXT_PROTOTYPES -L/usr/local/glfw/lib -lglfw \
-// -I/usr/local/cuda/include -lOpenCL
+// -I/usr/local/cuda/include -lOpenCL \
+// -I/usr/local/glm/include
 
 #define __CL_ENABLE_EXCEPTIONS
 
@@ -94,7 +95,6 @@ GLuint create_program(const char* vertexSrc,
 std::vector< real_t > create_2d_grid(int width, int height,
                                      int xOffset, int yOffset) {
     std::vector< real_t > g(width * height);
-    srand(time(0));
     for(int y = 0; y != height; ++y) {
         for(int x = 0; x != width; ++x) {
             if(y < yOffset
@@ -121,7 +121,7 @@ void key_callback(GLFWwindow* window, int key,
 
 //------------------------------------------------------------------------------
 const char kernelSrc[] =
-    "float grid(float* g, int row, int col, int columns) {\n"
+    "float grid(const __global float* g, int row, int col, int columns) {\n"
     "  return g[row *columns + col];\n"
     "}\n"
     "__kernel void apply_stencil(const __global float* in,\n"
@@ -129,11 +129,11 @@ const char kernelSrc[] =
     "                            int size) {\n"
     "   const int c = get_global_id(0);\n"
     "   const int r = get_global_id(1);\n"
-    "   const float v = grid(in, r, c);\n"
-    "   const float n = grid(in, r - 1, c);\n"
-    "   const float s = grid(in, r + 1, c);\n"
-    "   const float e = grid(in, r, c - 1);\n"
-    "   const float w = grid(in, r, c + 1);\n"
+    "   const float v = grid(in, r, c, size);\n"
+    "   const float n = grid(in, r - 1, c, size);\n"
+    "   const float s = grid(in, r + 1, c, size);\n"
+    "   const float e = grid(in, r, c - 1, size);\n"
+    "   const float w = grid(in, r, c + 1, size);\n"
     "   out[size * r + c] = v + 0.1f*(-4.f * (n + s + e + w));\n"
     "}";
 const char fragmentShaderSrc[] =
@@ -143,7 +143,7 @@ const char fragmentShaderSrc[] =
     "void main() {\n"
     "  float v = texture2D(cltexture, UV).r;\n"
     "  color = vec3(v, v, v);\n"
-    "}"
+    "}";
 const char vertexShaderSrc[] =
     "layout(location = 0) in vec2 position;\n"
     "layout(location = 1) in vec2 texcoord;\n"
@@ -152,7 +152,7 @@ const char vertexShaderSrc[] =
     "void main() {\n"
     "  gl_Position = MVP * vec4(position, 0, 1);\n"
     "  UV = texcoord;\n"
-    "}"   
+    "}";   
 
 //------------------------------------------------------------------------------
 bool IS_EVEN(int v) { return v % 2 == 0; }
@@ -204,16 +204,16 @@ int main(int argc, char** argv) {
         glfwOpenWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
         GLFWwindow* window = glfwCreateWindow(640, 480,
-                                              "Simple example", NULL, NULL);
+                                              "OpenCL interop", NULL, NULL);
         if (!window) {
             std::cerr << "ERROR - glfwCreateWindow" << std::endl;
             glfwTerminate();
             exit(EXIT_FAILURE);
         }
-
-        glfwMakeContextCurrent(window);
-
+        
         glfwSetKeyCallback(window, key_callback);
+   
+        glfwMakeContextCurrent(window);
 
 //OPENCL SETUP        
         //OpenCL context
@@ -253,7 +253,7 @@ int main(int argc, char** argv) {
         glGenBuffers(1, &quadvbo);
         glBindBuffer(GL_ARRAY_BUFFER, quadvbo);
         glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(real_t),
-                     &quad[0], GL_STATIC_DRAW);
+                     &quadvbo[0], GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         GLuint texbo;  
@@ -266,30 +266,30 @@ int main(int argc, char** argv) {
         //create textures mapped to CL buffers
         GLuint texEven;  
         glGenTextures(1, &texEven);
-        glBindTexture(GL_TEXTURE_2D, textEven);
+        glBindTexture(GL_TEXTURE_2D, texEven);
         glTexImage2D(GL_TEXTURE_2D,
-                      0,
-                      GL_LUMINANCE,
-                      SIZE,
-                      SIZE,
-                      0,
-                      GL_LUMINANCE,
-                      GL_FLOAT,
-                      0);
+                     0,
+                     GL_LUMINANCE,
+                     SIZE,
+                     SIZE,
+                     0,
+                     GL_LUMINANCE,
+                     GL_FLOAT,
+                     0);
         glBindTexture(0);
 
         GLuint texOdd;  
-        glGenTextures(1, &texEven);
+        glGenTextures(1, &texOdd);
         glBindTexture(GL_TEXTURE_2D, texOdd);
         glTexImage2D(GL_TEXTURE_2D,
-                      0,
-                      GL_LUMINANCE,
-                      SIZE,
-                      SIZE,
-                      0,
-                      GL_LUMINANCE,
-                      GL_FLOAT,
-                      0);
+                     0,
+                     GL_LUMINANCE,
+                     SIZE,
+                     SIZE,
+                     0,
+                     GL_LUMINANCE,
+                     GL_FLOAT,
+                     0);
         glBindTexture(0);
 
 
@@ -305,11 +305,11 @@ int main(int argc, char** argv) {
         if(status != CL_SUCCESS )
                 throw std::runtime_error("ERROR - clCreateFromGLTexture2D");
         cl_mem clbufferOdd = clCreateFromGLTexture2D(context(),
-                                                      CL_MEM_READ_WRITE, 
-                                                      GL_TEXTURE_2D,
-                                                      0,
-                                                      texOdd,
-                                                      &status);
+                                                     CL_MEM_READ_WRITE, 
+                                                     GL_TEXTURE_2D,
+                                                     0,
+                                                     texOdd,
+                                                     &status);
         if(status != CL_SUCCESS )
                 throw std::runtime_error("ERROR - clCreateFromGLTexture2D");    
 
@@ -422,11 +422,11 @@ int main(int argc, char** argv) {
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
             const float ratio = width / float(height);
-            glm::mat4 orthoProj = glm::perspective(-ratio, ratio,
-                                                   -1.0f,  1.0f,
-                                                    1.0f, -1.0f);
-            glm::mat4 modelView = glm::mat4(1.0f);
-            glm::mat4 MVP       = orthoProj * modelView;
+            const glm::mat4 orthoProj = glm::perspective(-ratio, ratio,
+                                                         -1.0f,  1.0f,
+                                                          1.0f, -1.0f);
+            const glm::mat4 modelView = glm::mat4(1.0f);
+            const glm::mat4 MVP       = orthoProj * modelView;
             glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
 
             //standard OpenGL core profile rendering
@@ -440,7 +440,6 @@ int main(int argc, char** argv) {
             glVertexAttribPointer(1, 2, GL_REAL_T, GL_FALSE, 0, 0);
             glDrawArrays(GL_TRIANGLES, 0, 6);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
-            glBindTexture(0); 
             glDisableVertexAttribArray(0);
             glDisableVertexAttribArray(1);
             glBindTexture(GL_TEXTURE_2D, 0);  
