@@ -150,7 +150,7 @@ int main(int argc, char** argv) {
         glGenBuffers(1, &vbo);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(real_t),
-                     &vertices[0], GL_STATIC_DRAW);
+                     &vertices[0], GL_DYNAMIC_DRAW);
         clbuffer = clCreateFromGLBuffer(context(), CL_MEM_READ_WRITE, vbo, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
