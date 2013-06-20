@@ -166,7 +166,7 @@ create_cl_gl_interop_properties(cl_platform_id platform);
 
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
-
+//USER INPUT
     if(argc < 4) {
       std::cout << "usage: " << argv[0]
                 << " <platform id(0, 1...)>"
@@ -190,8 +190,8 @@ int main(int argc, char** argv) {
         const int SIZE = atoi(argv[2]);
         const int GLOBAL_WORK_SIZE = SIZE - 2 * (STENCIL_SIZE / 2);
         const int LOCAL_WORK_SIZE = atoi(argv[3]);
-        
 
+//GRAPHICS SETUP        
         glfwSetErrorCallback(error_callback);
 
         if(!glfwInit()) {
@@ -214,14 +214,14 @@ int main(int argc, char** argv) {
         glfwMakeContextCurrent(window);
 
         glfwSetKeyCallback(window, key_callback);
-        
+
+//OPENCL SETUP        
         //OpenCL context
         CLContextProperties prop = 
             create_cl_gl_interop_properties(platforms[platformID]());
         cl::Context context(devices, &prop[0]);
 
         cl::CommandQueue queue(context, devices[0]);
-
        
         //cl kernel
         cl::Program::Sources source(1,
@@ -231,6 +231,8 @@ int main(int argc, char** argv) {
         program.build(devices);          
        
         cl::Kernel kernel(program, "apply_stencil");
+
+//GEOMETRY AND OPENCL-OPENGL MAPPING
  
         //geometry: textured quad; the texture color is conputed by
         //OpenCL
@@ -327,6 +329,7 @@ int main(int argc, char** argv) {
                                  data.size() * sizeof(real_t),
                                  &data[0]);
         
+//OPENGL RENDERING SHADERS
         //create opengl rendering program
         GLuint glprogram = create_program(vertexShaderSrc, fragmentShaderSrc);
             
@@ -339,11 +342,14 @@ int main(int argc, char** argv) {
 
         //set texture id
         glUniform1i(textureID, 0); //always use texture 0
-    
+
+//COMPUTE AND RENDER LOOP    
         int step = 0;
         GLuint tex = texEven;
         //rendering & simulation loop
-        while (!glfwWindowShouldClose(window)) {           
+        while (!glfwWindowShouldClose(window)) {     
+
+//COMPUTE 
             glFinish(); //<-- ensure Open*G*L is done
             //acquire CL objects and perform computation step
             status = clEnqueueAcquireGLObjects(queue(),
@@ -410,10 +416,13 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("ERROR - clEnqueueReleaseGLObjects");         
             
             queue.finish(); //<-- ensure Open*C*L is done
-
+//RENDER
             //setup OpenGL matrices: no more matrix stack in OpenGL >= 3 core
             //profile, need to compute modelview and projection matrix manually
-            glm::mat4 orthoProj = glm::perspective(-1.0f,  1.0f,
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+            const float ratio = width / float(height);
+            glm::mat4 orthoProj = glm::perspective(-ratio, ratio,
                                                    -1.0f,  1.0f,
                                                     1.0f, -1.0f);
             glm::mat4 modelView = glm::mat4(1.0f);
@@ -439,6 +448,7 @@ int main(int argc, char** argv) {
             glfwPollEvents();
         }
 
+//CLEANUP
         glDeleteBuffers(1, &quadvbo);
         glDeleteBuffers(1, &texbo);
         glDeleteTextures(1, &texEven);
