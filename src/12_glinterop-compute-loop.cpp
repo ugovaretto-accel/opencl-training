@@ -199,9 +199,9 @@ int main(int argc, char** argv) {
             exit(EXIT_FAILURE);
         }
 
-        glfwOpenWindowHint(GLFW_OPENGL_VERSION_MAJOR, 3);
-        glfwOpenWindowHint(GLFW_OPENGL_VERSION_MINOR, 3);
-        glfwOpenWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        // glfwOpenWindowHint(GLFW_OPENGL_VERSION_MAJOR, 3);
+        // glfwOpenWindowHint(GLFW_OPENGL_VERSION_MINOR, 3);
+        // glfwOpenWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
         GLFWwindow* window = glfwCreateWindow(640, 480,
                                               "OpenCL interop", NULL, NULL);
@@ -245,7 +245,7 @@ int main(int argc, char** argv) {
 
         real_t texcoord[] = {0.0f, 1.0f,
                              0.0f, 0.0f,
-                             1,0f, 0.0f,
+                             1.0f, 0.0f,
                              1.0f, 0.0f,
                              1.0f, 1.0f,
                              0.0f, 1.0f};                 
@@ -253,14 +253,14 @@ int main(int argc, char** argv) {
         glGenBuffers(1, &quadvbo);
         glBindBuffer(GL_ARRAY_BUFFER, quadvbo);
         glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(real_t),
-                     &quadvbo[0], GL_STATIC_DRAW);
+                     &quad[0], GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         GLuint texbo;  
         glGenBuffers(1, &texbo);
         glBindBuffer(GL_ARRAY_BUFFER, texbo);
         glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(real_t),
-                     &texbo[0], GL_STATIC_DRAW);
+                     &texcoord[0], GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
         //create textures mapped to CL buffers
@@ -276,7 +276,7 @@ int main(int argc, char** argv) {
                      GL_LUMINANCE,
                      GL_FLOAT,
                      0);
-        glBindTexture(0);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
         GLuint texOdd;  
         glGenTextures(1, &texOdd);
@@ -290,7 +290,7 @@ int main(int argc, char** argv) {
                      GL_LUMINANCE,
                      GL_FLOAT,
                      0);
-        glBindTexture(0);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
 
         //create CL buffers mapped to textures
