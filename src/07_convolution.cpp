@@ -31,7 +31,7 @@ std::vector< real_t > create_2d_grid(int width, int height,
 	std::vector< real_t > g(width * height);
 	srand(time(0));
     for(int y = 0; y != height; ++y) {
-        for(int x = 0; x != height; ++x) {
+        for(int x = 0; x != width; ++x) {
             g[y * width + x] = (rand() % 10);// / 10.0;
         }
     }

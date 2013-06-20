@@ -229,6 +229,7 @@ int main(int argc, char** argv) {
         glfwDestroyWindow(window);
 
         glfwTerminate();
+        clReleaseMemObject(clbuffer);
         exit(EXIT_SUCCESS);
     } catch(const cl::Error& e) {
         std::cerr << e.what() << ": Error code " << e.err() << std::endl;   
