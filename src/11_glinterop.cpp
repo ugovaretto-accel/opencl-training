@@ -39,7 +39,7 @@ void key_callback(GLFWwindow* window, int key,
 
 //#define DONT_NORMALIZE to show the effect of accumulated errors in output
 //array: the triangle keeps on shrinking in size
-const char* kernelSrc =
+const char kernelSrc[] =
     "#ifdef USE_DOUBLE\n"
     "#pragma OPENCL EXTENSION cl_khr_fp64: enable\n"
     "typedef double real_t;\n"
@@ -122,11 +122,10 @@ int main(int argc, char** argv) {
         cl::CommandQueue queue(context, devices[0]);
 
         glfwSetKeyCallback(window, key_callback);
-
         //cl kernel
         cl::Program::Sources source(1,
                                     std::make_pair(kernelSrc,
-                                                   0));
+                                                   sizeof(kernelSrc)));
         cl::Program program(context, source);
 #ifdef USE_DOUBLE
         if(DONT_NORMALIZE) program.build(devices,
