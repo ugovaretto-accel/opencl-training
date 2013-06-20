@@ -397,7 +397,7 @@ int main(int argc, char** argv) {
                 tex = texOdd;                 
             }
             
-            queue.setKernelArg(2, SIZE);
+            kernel.setArg(2, SIZE);
             
             queue.enqueueNDRangeKernel(kernel,
                                        cl::NDRange(0, 0),
@@ -422,9 +422,9 @@ int main(int argc, char** argv) {
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
             const float ratio = width / float(height);
-            const glm::mat4 orthoProj = glm::perspective(-ratio, ratio,
-                                                         -1.0f,  1.0f,
-                                                          1.0f, -1.0f);
+            const glm::mat4 orthoProj = glm::ortho(-ratio, ratio,
+                                                   -1.0f,  1.0f,
+                                                    1.0f, -1.0f);
             const glm::mat4 modelView = glm::mat4(1.0f);
             const glm::mat4 MVP       = orthoProj * modelView;
             glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
@@ -436,7 +436,7 @@ int main(int argc, char** argv) {
             glBindBuffer(GL_ARRAY_BUFFER, quadvbo);
             glVertexAttribPointer(0, 2, GL_REAL_T, GL_FALSE, 0, 0);
             glEnableVertexAttribArray(1);
-            glBindBuffer(GL_ARRAY_BUFFER, texcoords);
+            glBindBuffer(GL_ARRAY_BUFFER, texbo);
             glVertexAttribPointer(1, 2, GL_REAL_T, GL_FALSE, 0, 0);
             glDrawArrays(GL_TRIANGLES, 0, 6);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
