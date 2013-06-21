@@ -317,17 +317,21 @@ int main(int argc, char** argv) {
         std::vector< real_t > data = create_2d_grid(SIZE, SIZE,
                                                     STENCIL_SIZE / 2,
                                                     STENCIL_SIZE / 2 );
-        queue.enqueueWriteBuffer(clbufferEven,
-                                 CL_TRUE,
-                                 0,
-                                 data.size() * sizeof(real_t),
-                                 &data[0]);
+        clEnqueueWriteBuffer(queue(),
+                             clbufferEven,
+                             CL_TRUE,
+                             0,
+                             data.size() * sizeof(real_t),
+                             &data[0],
+                             0, 0, 0);
 
-        queue.enqueueWriteBuffer(clbufferOdd,
-                                 CL_TRUE,
-                                 0,
-                                 data.size() * sizeof(real_t),
-                                 &data[0]);
+        clEnqueueWriteBuffer(queue(),
+                             clbufferOdd,
+                             CL_TRUE,
+                             0,
+                             data.size() * sizeof(real_t),
+                             &data[0],
+                             0, 0, 0);
         
 //OPENGL RENDERING SHADERS
         //create opengl rendering program
