@@ -368,18 +368,15 @@ int main(int argc, char** argv) {
 #if 1            
             glFinish(); //<-- ensure Open*G*L is done
             //acquire CL objects and perform computation step
-            cl_event ev;
             status = clEnqueueAcquireGLObjects(queue(),
                                                1,
-                                               &clbufferEven, 0, 0, &ev);
-            queue.finish();
-            clWaitForEvents(1, &ev);
+                                               &clbufferEven, 0, 0, 0);
+        
             if(status != CL_SUCCESS )
                 throw std::runtime_error("ERROR - clEnqueueAcquireGLObjects");
             status = clEnqueueAcquireGLObjects(queue(),
                                                1,
-                                               &clbufferOdd, 0, 0, &ev);
-            queue.finish();
+                                               &clbufferOdd, 0, 0, 0);
             if(status != CL_SUCCESS )
                 throw std::runtime_error("ERROR - clEnqueueAcquireGLObjects");      
             
@@ -398,7 +395,7 @@ int main(int argc, char** argv) {
             
                 if(status != CL_SUCCESS )
                     throw std::runtime_error("ERROR - clSetKernelArg");
-                //tex = texOdd;
+                tex = texOdd; //display result in clbufferOdd
             } else {//even
                 status = clSetKernelArg(kernel(), //kernel
                                         0,      //parameter id
@@ -414,7 +411,7 @@ int main(int argc, char** argv) {
             
                 if(status != CL_SUCCESS )
                     throw std::runtime_error("ERROR - clSetKernelArg");
-                //tex = texEven;                 
+                tex = texEven; //display result in texEven buffer                 
             }
             
             
