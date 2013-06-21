@@ -36,6 +36,11 @@ typedef float real_t;
 const GLenum GL_REAL_T = GL_FLOAT;
 #endif
 
+#define gle std::cout << "[GL] - " \
+                      << __LINE__ << ' ' << glGetError() << std::endl;
+#define cle std::cout << "[CL] - " \
+                      << __LINE__ << ' ' << status << std::endl;
+
 //------------------------------------------------------------------------------
 GLuint create_program(const char* vertexSrc,
                       const char* fragmentSrc) {
@@ -51,10 +56,11 @@ GLuint create_program(const char* vertexSrc,
     // Check Vertex Shader
     glGetShaderiv(vs, GL_COMPILE_STATUS, &res);
     glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &logsize);
-    if(logsize > 0){
+ 
+    if(logsize > 1){
         std::vector<char> errmsg(logsize + 1, 0);
         glGetShaderInfoLog(vs, logsize, 0, &errmsg[0]);
-        throw std::runtime_error(&errmsg[0]);
+        std::cout << &errmsg[0] << std::endl;
     }
     // Compile Fragment Shader
     glShaderSource(fs, 1, &fragmentSrc, 0);
@@ -63,10 +69,10 @@ GLuint create_program(const char* vertexSrc,
     // Check Fragment Shader
     glGetShaderiv(fs, GL_COMPILE_STATUS, &res);
     glGetShaderiv(fs, GL_INFO_LOG_LENGTH, &logsize);
-    if(logsize > 0){
+    if(logsize > 1){
         std::vector<char> errmsg(logsize + 1, 0);
         glGetShaderInfoLog(fs, logsize, 0, &errmsg[0]);
-        throw std::runtime_error(&errmsg[0]);
+        std::cout << &errmsg[0] << std::endl;
     }
 
     // Link the program
@@ -78,10 +84,10 @@ GLuint create_program(const char* vertexSrc,
     // Check the program
     glGetProgramiv(program, GL_LINK_STATUS, &res);
     glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logsize);
-    if(logsize > 0) {
+    if(logsize > 1) {
         std::vector<char> errmsg(logsize + 1, 0);
         glGetShaderInfoLog(program, logsize, 0, &errmsg[0]);
-        throw std::runtime_error(&errmsg[0]);
+        std::cout << &errmsg[0] << std::endl;
     }
 
     glDeleteShader(vs);
@@ -121,22 +127,22 @@ void key_callback(GLFWwindow* window, int key,
 
 //------------------------------------------------------------------------------
 const char kernelSrc[] =
-    "float grid(const __global float* g, int row, int col, int columns) {\n"
-    "  return g[row *columns + col];\n"
-    "}\n"
-    "__kernel void apply_stencil(const __global float* in,\n"
-    "                            __global float* out,\n"
-    "                            int size) {\n"
-    "   const int c = get_global_id(0);\n"
-    "   const int r = get_global_id(1);\n"
-    "   const float v = grid(in, r, c, size);\n"
-    "   const float n = grid(in, r - 1, c, size);\n"
-    "   const float s = grid(in, r + 1, c, size);\n"
-    "   const float e = grid(in, r, c - 1, size);\n"
-    "   const float w = grid(in, r, c + 1, size);\n"
-    "   out[size * r + c] = v + 0.1f*(-4.f * (n + s + e + w));\n"
+    "__constant sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE |\n"
+    "                           CLK_FILTER_NEAREST |\n"
+    "                           CLK_ADDRESS_NONE;\n"
+    "__kernel void apply_stencil(read_only image2d_t src,\n"
+    "                            write_only image2d_t out) {\n"
+    "   const int2 c = (int2)(get_global_id(0) + 1, get_global_id(1) + 1);\n"
+    "   const float v = (read_imagef(src, sampler, c)).x;\n"
+    "   const float n = (read_imagef(src, sampler, c + (int2)( 0,-1))).x;\n"
+    "   const float s = (read_imagef(src, sampler, c + (int2)( 0, 1))).x;\n"
+    "   const float e = (read_imagef(src, sampler, c + (int2)( 1, 0))).x;\n"
+    "   const float w = (read_imagef(src, sampler, c + (int2)(-1, 0))).x;\n"
+    "   const float f = v + 0.1f * (-4.0f * (n + s + e + w));\n"
+    "   write_imagef(out, c, (float4)(f, 0, 0, 1));\n"
     "}";
 const char fragmentShaderSrc[] =
+    "#version 330 core\n"
     "in vec2 UV;\n"
     "out vec3 color;\n"
     "uniform sampler2D cltexture;\n"
@@ -145,6 +151,7 @@ const char fragmentShaderSrc[] =
     "  color = vec3(v, v, v);\n"
     "}";
 const char vertexShaderSrc[] =
+    "#version 330 core\n"
     "layout(location = 0) in vec2 position;\n"
     "layout(location = 1) in vec2 texcoord;\n"
     "out vec2 UV;\n"
@@ -199,9 +206,9 @@ int main(int argc, char** argv) {
             exit(EXIT_FAILURE);
         }
 
-        // glfwOpenWindowHint(GLFW_OPENGL_VERSION_MAJOR, 3);
-        // glfwOpenWindowHint(GLFW_OPENGL_VERSION_MINOR, 3);
-        // glfwOpenWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
         GLFWwindow* window = glfwCreateWindow(640, 480,
                                               "OpenCL interop", NULL, NULL);
@@ -228,8 +235,14 @@ int main(int argc, char** argv) {
                                     std::make_pair(kernelSrc,
                                                    sizeof(kernelSrc)));
         cl::Program program(context, source);
-        program.build(devices);          
-       
+        try {
+            program.build(devices);
+        } catch(const cl::Error& err) {
+            std::string s;
+            program.getBuildInfo(devices[0], CL_PROGRAM_BUILD_LOG, &s);           
+            std::cout << s << std::endl;
+            throw(err);
+        }
         cl::Kernel kernel(program, "apply_stencil");
 
 //GEOMETRY AND OPENCL-OPENGL MAPPING
@@ -263,31 +276,36 @@ int main(int argc, char** argv) {
                      &texcoord[0], GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
+
         //create textures mapped to CL buffers
         GLuint texEven;  
         glGenTextures(1, &texEven);
+
         glBindTexture(GL_TEXTURE_2D, texEven);
+        
         glTexImage2D(GL_TEXTURE_2D,
                      0,
-                     GL_LUMINANCE,
+                     GL_RED,
                      SIZE,
                      SIZE,
                      0,
-                     GL_LUMINANCE,
+                     GL_RED,
                      GL_FLOAT,
                      0);
+       
         glBindTexture(GL_TEXTURE_2D, 0);
+
 
         GLuint texOdd;  
         glGenTextures(1, &texOdd);
         glBindTexture(GL_TEXTURE_2D, texOdd);
         glTexImage2D(GL_TEXTURE_2D,
                      0,
-                     GL_LUMINANCE,
+                     GL_RED,
                      SIZE,
                      SIZE,
                      0,
-                     GL_LUMINANCE,
+                     GL_RED,
                      GL_FLOAT,
                      0);
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -301,7 +319,6 @@ int main(int argc, char** argv) {
                                                       0,
                                                       texEven,
                                                       &status);
-
         if(status != CL_SUCCESS )
                 throw std::runtime_error("ERROR - clCreateFromGLTexture2D");
         cl_mem clbufferOdd = clCreateFromGLTexture2D(context(),
@@ -317,24 +334,48 @@ int main(int argc, char** argv) {
         std::vector< real_t > data = create_2d_grid(SIZE, SIZE,
                                                     STENCIL_SIZE / 2,
                                                     STENCIL_SIZE / 2 );
-        clEnqueueWriteBuffer(queue(),
-                             clbufferEven,
-                             CL_TRUE,
-                             0,
-                             data.size() * sizeof(real_t),
-                             &data[0],
-                             0, 0, 0);
 
-        clEnqueueWriteBuffer(queue(),
-                             clbufferOdd,
-                             CL_TRUE,
-                             0,
-                             data.size() * sizeof(real_t),
-                             &data[0],
-                             0, 0, 0);
-        
+//         glFinish();
+//         //acquire CL objects and perform computation step
+//         status = clEnqueueAcquireGLObjects(queue(),
+//                                            1,
+//                                            &clbufferEven, 0, 0, 0);
+//         if(status != CL_SUCCESS )
+//             throw std::runtime_error("ERROR - clEnqueueAcquireGLObjects");
+//         status = clEnqueueAcquireGLObjects(queue(),
+//                                                   1,
+//                                                   &clbufferOdd, 0, 0, 0);
+//         if(status != CL_SUCCESS )
+//             throw std::runtime_error("ERROR - clEnqueueAcquireGLObjects"); 
+//         // status = clEnqueueWriteBuffer(queue(),
+//         //                      clbufferEven,
+//         //                      CL_TRUE,
+//         //                      0,
+//         //                      data.size() * sizeof(real_t),
+//         //                      &data[0],
+//         //                      0, 0, 0);
+
+//         // status = clEnqueueWriteBuffer(queue(),
+//         //                      clbufferOdd,
+//         //                      CL_TRUE,
+//         //                      0,
+//         //                      data.size() * sizeof(real_t),
+//         //                      &data[0],
+//         //                      0, 0, 0);
+
+//         status = clEnqueueReleaseGLObjects(queue(),
+//                                                1, &clbufferEven, 0, 0, 0);
+//             if(status != CL_SUCCESS)
+//                 throw std::runtime_error("ERROR - clEnqueueReleaseGLObjects");
+//             status = clEnqueueReleaseGLObjects(queue(),
+//                                                1, &clbufferOdd, 0, 0, 0);
+//             if(status != CL_SUCCESS)
+//                 throw std::runtime_error("ERROR - clEnqueueReleaseGLObjects");         
+// gle            
+//         queue.finish(); //<-- ensure Open*C*L is done        
 //OPENGL RENDERING SHADERS
         //create opengl rendering program
+
         GLuint glprogram = create_program(vertexShaderSrc, fragmentShaderSrc);
             
         //extract ids of shader variables
@@ -356,14 +397,18 @@ int main(int argc, char** argv) {
 //COMPUTE 
             glFinish(); //<-- ensure Open*G*L is done
             //acquire CL objects and perform computation step
+            cl_event ev;
             status = clEnqueueAcquireGLObjects(queue(),
-                                                      1,
-                                                      &clbufferEven, 0, 0, 0);
+                                               1,
+                                               &clbufferEven, 0, 0, &ev);
+            queue.finish();
+            clWaitForEvents(1, &ev);
             if(status != CL_SUCCESS )
                 throw std::runtime_error("ERROR - clEnqueueAcquireGLObjects");
-            cl_int status = clEnqueueAcquireGLObjects(queue(),
-                                                      1,
-                                                      &clbufferOdd, 0, 0, 0);
+            status = clEnqueueAcquireGLObjects(queue(),
+                                               1,
+                                               &clbufferOdd, 0, 0, &ev);
+            queue.finish();
             if(status != CL_SUCCESS )
                 throw std::runtime_error("ERROR - clEnqueueAcquireGLObjects");      
             
@@ -372,7 +417,7 @@ int main(int argc, char** argv) {
                                         0,      //parameter id
                                         sizeof(cl_mem), //size of parameter
                                         &clbufferEven); //pointer to parameter
-            
+                
                 if(status != CL_SUCCESS )
                     throw std::runtime_error("ERROR - clSetKernelArg");
                 status = clSetKernelArg(kernel(), //kernel
@@ -401,7 +446,6 @@ int main(int argc, char** argv) {
                 tex = texOdd;                 
             }
             
-            kernel.setArg(2, SIZE);
             
             queue.enqueueNDRangeKernel(kernel,
                                        cl::NDRange(0, 0),
