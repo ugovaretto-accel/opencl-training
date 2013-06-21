@@ -169,10 +169,10 @@ int main(int argc, char** argv) {
             glLoadIdentity();
             glOrtho(-ratio, ratio, -1.f, 1.f, 1.f, -1.f);
             glMatrixMode(GL_MODELVIEW);
-
-
-            real_t elapsedTime = real_t(glfwGetTime()); 
             glLoadIdentity();
+ 
+            real_t elapsedTime = real_t(glfwGetTime()); 
+           
             //use OpenCL kernel to update vertices instead of following line
             //glRotatef(elapsedTime * 50.f, 0.f, 0.f, 1.f);
             

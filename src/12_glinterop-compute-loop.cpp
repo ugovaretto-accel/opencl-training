@@ -19,6 +19,7 @@
 // Include GLM
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 //OpenCL C++ wrapper
 #include "cl.hpp"
@@ -147,18 +148,17 @@ const char fragmentShaderSrc[] =
     "out vec3 color;\n"
     "uniform sampler2D cltexture;\n"
     "void main() {\n"
-    "  float v = texture2D(cltexture, UV).r;\n"
-    "  color = vec3(v, v, v);\n"
+    "  color = texture2D(cltexture, UV).rrr;\n"
     "}";
 const char vertexShaderSrc[] =
     "#version 330 core\n"
-    "layout(location = 0) in vec2 position;\n"
-    "layout(location = 1) in vec2 texcoord;\n"
+    "layout(location = 0) in vec2 pos;\n"
+    "layout(location = 1) in vec2 tex;\n"
     "out vec2 UV;\n"
     "uniform mat4 MVP;\n"
     "void main() {\n"
-    "  gl_Position = MVP * vec4(position, 0, 1);\n"
-    "  UV = texcoord;\n"
+    "  gl_Position = vec4(pos.x, pos.y, 0.0f, 1.0f);\n"
+    "  UV = tex;\n"
     "}";   
 
 //------------------------------------------------------------------------------
@@ -182,7 +182,6 @@ int main(int argc, char** argv) {
                 << std::endl; 
       exit(EXIT_FAILURE);          
     }
-    const bool DONT_NORMALIZE = (argc > 2);
     try {
         const int platformID = atoi(argv[1]);
         std::vector<cl::Platform> platforms;
@@ -205,10 +204,6 @@ int main(int argc, char** argv) {
             std::cerr << "ERROR - glfwInit" << std::endl;
             exit(EXIT_FAILURE);
         }
-
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
         GLFWwindow* window = glfwCreateWindow(640, 480,
                                               "OpenCL interop", NULL, NULL);
@@ -253,7 +248,7 @@ int main(int argc, char** argv) {
                          -1.0f, -1.0f,
                           1.0f, -1.0f,
                           1.0f, -1.0f,
-                          1.0f,  1.0f
+                          1.0f,  1.0f,
                          -1.0f,  1.0f};
 
         real_t texcoord[] = {0.0f, 1.0f,
@@ -277,7 +272,12 @@ int main(int argc, char** argv) {
         glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
 
-        //create textures mapped to CL buffers
+        //create textures mapped to CL buffers; initialize data in textures
+        //directly
+
+        std::vector< real_t > grid = create_2d_grid(SIZE, SIZE,
+                                                    STENCIL_SIZE / 2,
+                                                    STENCIL_SIZE / 2);
         GLuint texEven;  
         glGenTextures(1, &texEven);
 
@@ -291,7 +291,13 @@ int main(int argc, char** argv) {
                      0,
                      GL_RED,
                      GL_FLOAT,
-                     0);
+                     &grid[0]);
+        //optional
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        //required
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
        
         glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -307,7 +313,13 @@ int main(int argc, char** argv) {
                      0,
                      GL_RED,
                      GL_FLOAT,
-                     0);
+                     &grid[0]);
+        //optional
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        //required
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
         glBindTexture(GL_TEXTURE_2D, 0);
 
 
@@ -330,49 +342,7 @@ int main(int argc, char** argv) {
         if(status != CL_SUCCESS )
                 throw std::runtime_error("ERROR - clCreateFromGLTexture2D");    
 
-        //init data
-        std::vector< real_t > data = create_2d_grid(SIZE, SIZE,
-                                                    STENCIL_SIZE / 2,
-                                                    STENCIL_SIZE / 2 );
 
-//         glFinish();
-//         //acquire CL objects and perform computation step
-//         status = clEnqueueAcquireGLObjects(queue(),
-//                                            1,
-//                                            &clbufferEven, 0, 0, 0);
-//         if(status != CL_SUCCESS )
-//             throw std::runtime_error("ERROR - clEnqueueAcquireGLObjects");
-//         status = clEnqueueAcquireGLObjects(queue(),
-//                                                   1,
-//                                                   &clbufferOdd, 0, 0, 0);
-//         if(status != CL_SUCCESS )
-//             throw std::runtime_error("ERROR - clEnqueueAcquireGLObjects"); 
-//         // status = clEnqueueWriteBuffer(queue(),
-//         //                      clbufferEven,
-//         //                      CL_TRUE,
-//         //                      0,
-//         //                      data.size() * sizeof(real_t),
-//         //                      &data[0],
-//         //                      0, 0, 0);
-
-//         // status = clEnqueueWriteBuffer(queue(),
-//         //                      clbufferOdd,
-//         //                      CL_TRUE,
-//         //                      0,
-//         //                      data.size() * sizeof(real_t),
-//         //                      &data[0],
-//         //                      0, 0, 0);
-
-//         status = clEnqueueReleaseGLObjects(queue(),
-//                                                1, &clbufferEven, 0, 0, 0);
-//             if(status != CL_SUCCESS)
-//                 throw std::runtime_error("ERROR - clEnqueueReleaseGLObjects");
-//             status = clEnqueueReleaseGLObjects(queue(),
-//                                                1, &clbufferOdd, 0, 0, 0);
-//             if(status != CL_SUCCESS)
-//                 throw std::runtime_error("ERROR - clEnqueueReleaseGLObjects");         
-// gle            
-//         queue.finish(); //<-- ensure Open*C*L is done        
 //OPENGL RENDERING SHADERS
         //create opengl rendering program
 
@@ -395,6 +365,7 @@ int main(int argc, char** argv) {
         while (!glfwWindowShouldClose(window)) {     
 
 //COMPUTE 
+#if 1            
             glFinish(); //<-- ensure Open*G*L is done
             //acquire CL objects and perform computation step
             cl_event ev;
@@ -427,7 +398,7 @@ int main(int argc, char** argv) {
             
                 if(status != CL_SUCCESS )
                     throw std::runtime_error("ERROR - clSetKernelArg");
-                tex = texEven;
+                //tex = texOdd;
             } else {//even
                 status = clSetKernelArg(kernel(), //kernel
                                         0,      //parameter id
@@ -443,7 +414,7 @@ int main(int argc, char** argv) {
             
                 if(status != CL_SUCCESS )
                     throw std::runtime_error("ERROR - clSetKernelArg");
-                tex = texOdd;                 
+                //tex = texEven;                 
             }
             
             
@@ -464,35 +435,41 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("ERROR - clEnqueueReleaseGLObjects");         
             
             queue.finish(); //<-- ensure Open*C*L is done
+#endif            
 //RENDER
             //setup OpenGL matrices: no more matrix stack in OpenGL >= 3 core
             //profile, need to compute modelview and projection matrix manually
+            // Clear the screen
+            glClear(GL_COLOR_BUFFER_BIT);
+        
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
+            glViewport(0, 0, width, height);
             const float ratio = width / float(height);
             const glm::mat4 orthoProj = glm::ortho(-ratio, ratio,
                                                    -1.0f,  1.0f,
-                                                    1.0f, -1.0f);
+                                                    1.0f,  -1.0f);
             const glm::mat4 modelView = glm::mat4(1.0f);
             const glm::mat4 MVP       = orthoProj * modelView;
-            glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
+            glUniformMatrix4fv(mvpID, 1, GL_FALSE, glm::value_ptr(MVP));
 
             //standard OpenGL core profile rendering
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, tex);
             glEnableVertexAttribArray(0);
             glBindBuffer(GL_ARRAY_BUFFER, quadvbo);
-            glVertexAttribPointer(0, 2, GL_REAL_T, GL_FALSE, 0, 0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
             glEnableVertexAttribArray(1);
             glBindBuffer(GL_ARRAY_BUFFER, texbo);
-            glVertexAttribPointer(1, 2, GL_REAL_T, GL_FALSE, 0, 0);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
+            glDrawArrays(GL_TRIANGLES, 0, 6);    
             glDisableVertexAttribArray(0);
             glDisableVertexAttribArray(1);
-            glBindTexture(GL_TEXTURE_2D, 0);  
+            glBindTexture(GL_TEXTURE_2D, 0);
             glfwSwapBuffers(window);
             glfwPollEvents();
+
+            ++step; //next step
         }
 
 //CLEANUP
