@@ -133,13 +133,14 @@ const char kernelSrc[] =
     "                           CLK_ADDRESS_NONE;\n"
     "__kernel void apply_stencil(read_only image2d_t src,\n"
     "                            write_only image2d_t out) {\n"
+    "   const float DIFFUSION_SPEED = 0.1f;\n" //make this a kernel parameter
     "   const int2 c = (int2)(get_global_id(0) + 1, get_global_id(1) + 1);\n"
     "   const float v = (read_imagef(src, sampler, c)).x;\n"
     "   const float n = (read_imagef(src, sampler, c + (int2)( 0,-1))).x;\n"
     "   const float s = (read_imagef(src, sampler, c + (int2)( 0, 1))).x;\n"
     "   const float e = (read_imagef(src, sampler, c + (int2)( 1, 0))).x;\n"
     "   const float w = (read_imagef(src, sampler, c + (int2)(-1, 0))).x;\n"
-    "   const float f = v + 0.1f * (-4.0f * (n + s + e + w));\n"
+    "   const float f = v + DIFFUSION_SPEED * (n + s + e + w - 4.0f*v);\n"
     "   write_imagef(out, c, (float4)(f, 0, 0, 1));\n"
     "}";
 const char fragmentShaderSrc[] =
