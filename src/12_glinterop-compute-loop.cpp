@@ -12,7 +12,6 @@
 
 #define __CL_ENABLE_EXCEPTIONS
 
-#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -531,7 +530,6 @@ int main(int argc, char** argv) {
         glDeleteTextures(1, &texOdd);
         glfwDestroyWindow(window);
 
-        printf("\r");
         glfwTerminate();
         exit(EXIT_SUCCESS);
     } catch(const cl::Error& e) {
