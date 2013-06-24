@@ -29,18 +29,8 @@
 //OpenCL C++ wrapper
 #include "cl.hpp"
 
-#ifdef USE_DOUBLE
-typedef double real_t;
-const GLenum GL_REAL_T = GL_DOUBLE;
-#else
-typedef float real_t;
-const GLenum GL_REAL_T = GL_FLOAT;
-#endif
-
 #define gle std::cout << "[GL] - " \
                       << __LINE__ << ' ' << glGetError() << std::endl;
-#define cle std::cout << "[CL] - " \
-                      << __LINE__ << ' ' << status << std::endl;
 
 //------------------------------------------------------------------------------
 GLuint create_program(const char* vertexSrc,
@@ -102,17 +92,17 @@ GLuint create_program(const char* vertexSrc,
 
 
 //------------------------------------------------------------------------------
-std::vector< real_t > create_2d_grid(int width, int height,
+std::vector< float > create_2d_grid(int width, int height,
                                      int xOffset, int yOffset,
                                      float value) {
-    std::vector< real_t > g(width * height);
+    std::vector< float > g(width * height);
     for(int y = 0; y != height; ++y) {
         for(int x = 0; x != width; ++x) {
             if(y < yOffset
                || x < xOffset
                || y >= height - yOffset
                || x >= width - xOffset) g[y * width + x] = value;
-            else g[y * width + x] = real_t(0);
+            else g[y * width + x] = float(0);
         }
     }
     return g;
@@ -264,14 +254,14 @@ int main(int argc, char** argv) {
  
         //geometry: textured quad; the texture color value is computed by
         //OpenCL
-        real_t quad[] = {-1.0f,  1.0f,
+        float quad[] = {-1.0f,  1.0f,
                          -1.0f, -1.0f,
                           1.0f, -1.0f,
                           1.0f, -1.0f,
                           1.0f,  1.0f,
                          -1.0f,  1.0f};
 
-        real_t texcoord[] = {0.0f, 1.0f,
+        float texcoord[] = {0.0f, 1.0f,
                              0.0f, 0.0f,
                              1.0f, 0.0f,
                              1.0f, 0.0f,
@@ -280,14 +270,14 @@ int main(int argc, char** argv) {
         GLuint quadvbo;  
         glGenBuffers(1, &quadvbo);
         glBindBuffer(GL_ARRAY_BUFFER, quadvbo);
-        glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(real_t),
+        glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(float),
                      &quad[0], GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         GLuint texbo;  
         glGenBuffers(1, &texbo);
         glBindBuffer(GL_ARRAY_BUFFER, texbo);
-        glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(real_t),
+        glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(float),
                      &texcoord[0], GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
@@ -295,7 +285,7 @@ int main(int argc, char** argv) {
         //create textures mapped to CL buffers; initialize data in textures
         //directly
 
-        std::vector< real_t > grid = create_2d_grid(SIZE, SIZE,
+        std::vector< float > grid = create_2d_grid(SIZE, SIZE,
                                                     STENCIL_SIZE / 2,
                                                     STENCIL_SIZE / 2,
                                                     BOUNDARY_VALUE);
@@ -318,7 +308,8 @@ int main(int argc, char** argv) {
         //optional
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        //required
+        //required - use GL_NEAREST instead of GL_LINEAR to visualize
+        //the actual discrete pixels
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
        
@@ -349,24 +340,17 @@ int main(int argc, char** argv) {
 
 
         //create CL buffers mapped to textures
-        cl_int status;
-        cl_mem clbufferEven = clCreateFromGLTexture2D(context(),
-                                                      CL_MEM_READ_WRITE, 
-                                                      GL_TEXTURE_2D,
-                                                      0,
-                                                      texEven,
-                                                      &status);
-        if(status != CL_SUCCESS )
-                throw std::runtime_error("ERROR - clCreateFromGLTexture2D");
-        cl_mem clbufferOdd = clCreateFromGLTexture2D(context(),
-                                                     CL_MEM_READ_WRITE, 
-                                                     GL_TEXTURE_2D,
-                                                     0,
-                                                     texOdd,
-                                                     &status);
-        if(status != CL_SUCCESS )
-                throw std::runtime_error("ERROR - clCreateFromGLTexture2D");    
-
+        std::vector< cl::Image2DGL > clbuffers(2);
+        clbuffers[0] = cl::Image2DGL(context,
+                                     CL_MEM_READ_WRITE, 
+                                     GL_TEXTURE_2D,
+                                     0,
+                                     texEven);
+        clbuffers[1] = cl::Image2DGL(context,
+                                     CL_MEM_READ_WRITE, 
+                                     GL_TEXTURE_2D,
+                                     0,
+                                     texOdd); 
 
 //OPENGL RENDERING SHADERS
         //create opengl rendering program
@@ -396,58 +380,33 @@ int main(int argc, char** argv) {
         std::cout << std::endl;
         double start = glfwGetTime();
         double totalTime = 0;
+        //make a copy of cl images into a cl::Memory array:
+        //the following is required to invoke acquire/release GL object
+        //methods in cl::Queue since the methods require pointers to
+        //vectors and not (templated) iterators; it is therefore
+        //impossible to pass a cl::Image2D vector to the methods
+        std::vector<cl::Memory> clmembuffers(clbuffers.begin(),
+                                             clbuffers.end());
         while (!glfwWindowShouldClose(window) && !converged) {     
 
 //COMPUTE AND CHECK CONVERGENCE           
             glFinish(); //<-- ensure Open*G*L is done
-            //acquire CL objects and perform computation step
-            cl_event ev;
-            status = clEnqueueAcquireGLObjects(queue(),
-                                               1,
-                                               &clbufferEven, 0, 0, &ev);
-            queue.finish();
-            clWaitForEvents(1, &ev);
-            if(status != CL_SUCCESS )
-                throw std::runtime_error("ERROR - clEnqueueAcquireGLObjects");
-            status = clEnqueueAcquireGLObjects(queue(),
-                                               1,
-                                               &clbufferOdd, 0, 0, &ev);
-            queue.finish();
-            if(status != CL_SUCCESS )
-                throw std::runtime_error("ERROR - clEnqueueAcquireGLObjects");      
+
+            //problem(bad design): the enqueue* methods take pointers to 
+            //vector<cl::Memory> not templated iterators; it is therefore
+            //impossible to reuse the clbuffers vector since a sequence
+            //containing a derived type has no relationship with a 
+            //sequence of base types
+            queue.enqueueAcquireGLObjects(&clmembuffers);
             
             if(IS_EVEN(step)) {
-                status = clSetKernelArg(kernel(), //kernel
-                                        0,      //parameter id
-                                        sizeof(cl_mem), //size of parameter
-                                        &clbufferEven); //pointer to parameter
-                
-                if(status != CL_SUCCESS )
-                    throw std::runtime_error("ERROR - clSetKernelArg");
-                status = clSetKernelArg(kernel(), //kernel
-                                        1,      //parameter id
-                                        sizeof(cl_mem), //size of parameter
-                                        &clbufferOdd); //pointer to parameter
-            
-                if(status != CL_SUCCESS )
-                    throw std::runtime_error("ERROR - clSetKernelArg");
+                kernel.setArg(0, clbuffers[0]);
+                kernel.setArg(1, clbuffers[1]);
                 tex = texOdd;
             } else {//even
-                status = clSetKernelArg(kernel(), //kernel
-                                        0,      //parameter id
-                                        sizeof(cl_mem), //size of parameter
-                                        &clbufferOdd); //pointer to parameter
-            
-                if(status != CL_SUCCESS )
-                    throw std::runtime_error("ERROR - clSetKernelArg");
-                status = clSetKernelArg(kernel(), //kernel
-                                        1,      //parameter id
-                                        sizeof(cl_mem), //size of parameter
-                                        &clbufferEven); //pointer to parameter
-            
-                if(status != CL_SUCCESS )
-                    throw std::runtime_error("ERROR - clSetKernelArg");
-                tex = texEven;                 
+                kernel.setArg(0, clbuffers[1]);
+                kernel.setArg(1, clbuffers[0]);
+                tex = texEven;
             }
             
             kernel.setArg(2, DIFFUSION_SPEED);
@@ -461,19 +420,23 @@ int main(int argc, char** argv) {
             //CHECK FOR CONVERGENCE: extract element at grid center
             //and exit if |element value - boundary value| <= EPS    
             float centerOut = -BOUNDARY_VALUE;
-            cl_mem activeBuffer = IS_EVEN(step) ? clbufferOdd : clbufferEven;
-            const size_t origin[] = {SIZE / 2, SIZE / 2, 0};
-            const size_t region[] = {1, 1, 1};
-            status = clEnqueueReadImage(queue(),
-                                        activeBuffer,
-                                        CL_TRUE,
-                                        origin,
-                                        region,
-                                        0, //row pitch; zero for delegating
-                                           //computation to OpenCL
-                                        0, //slice pitch: for 3D only
-                                        &centerOut,
-                                        0, 0, 0);
+            int activeBuffer = IS_EVEN(step) ? 1 : 0;
+            cl::size_t<3> origin;
+            origin[0] = SIZE / 2;
+            origin[1] = SIZE / 2;
+            origin[2] = 0;
+            cl::size_t<3> region;
+            region[0] = 1;
+            region[1] = 1;
+            region[2] = 1;
+            queue.enqueueReadImage(clbuffers[activeBuffer],
+                                   CL_TRUE,
+                                   origin,
+                                   region,
+                                   0, //row pitch; zero for delegating
+                                      //computation to OpenCL
+                                   0, //slice pitch: for 3D only
+                                   &centerOut);
             const double elapsed = glfwGetTime() - start;
             totalTime += elapsed;
             start = elapsed;
@@ -483,15 +446,7 @@ int main(int argc, char** argv) {
             const double error_rate = relative_error / elapsed;
             if(relative_error <= MAX_RELATIVE_ERROR) converged = true;
             
-            status = clEnqueueReleaseGLObjects(queue(),
-                                               1, &clbufferEven, 0, 0, 0);
-            if(status != CL_SUCCESS)
-                throw std::runtime_error("ERROR - clEnqueueReleaseGLObjects");
-            status = clEnqueueReleaseGLObjects(queue(),
-                                               1, &clbufferOdd, 0, 0, 0);
-            if(status != CL_SUCCESS)
-                throw std::runtime_error("ERROR - clEnqueueReleaseGLObjects");         
-            
+            queue.enqueueReleaseGLObjects(&clmembuffers);         
             queue.finish(); //<-- ensure Open*C*L is done          
 //RENDER
             //setup OpenGL matrices: no more matrix stack in OpenGL >= 3 core
@@ -544,9 +499,6 @@ int main(int argc, char** argv) {
         glDeleteTextures(1, &texEven);
         glDeleteTextures(1, &texOdd);
         glfwDestroyWindow(window);
-
-        clReleaseMemObject(clbufferOdd);
-        clReleaseMemObject(clbufferEven);
 
         printf("\r");
         glfwTerminate();
