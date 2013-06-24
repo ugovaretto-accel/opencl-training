@@ -4,8 +4,6 @@
 //Requires GLFW and GLM, to deal with the missing support for matrix stack
 //in OpenGL >= 3.3
 
-/////////// IN PROGRESS //////////////////
-
 //g++ ../src/12_glinterop-compute-loop.cpp \
 // ../src/gl-cl.cpp -I/usr/local/glfw/include \
 // -DGL_GLEXT_PROTOTYPES -L/usr/local/glfw/lib -lglfw \
@@ -13,6 +11,13 @@
 // -I/usr/local/glm/include
 
 #define __CL_ENABLE_EXCEPTIONS
+
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <vector>
+#include <stdexcept>
+
 
 #include <GLFW/glfw3.h>
 
@@ -23,11 +28,6 @@
 
 //OpenCL C++ wrapper
 #include "cl.hpp"
-
-#include <cstdlib>
-#include <iostream>
-#include <vector>
-#include <stdexcept>
 
 #ifdef USE_DOUBLE
 typedef double real_t;
@@ -58,7 +58,8 @@ GLuint create_program(const char* vertexSrc,
     glGetShaderiv(vs, GL_COMPILE_STATUS, &res);
     glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &logsize);
  
-    if(logsize > 1){
+    if(logsize > 1) {
+        std::cout << "Vertex shader:\n";
         std::vector<char> errmsg(logsize + 1, 0);
         glGetShaderInfoLog(vs, logsize, 0, &errmsg[0]);
         std::cout << &errmsg[0] << std::endl;
@@ -70,7 +71,8 @@ GLuint create_program(const char* vertexSrc,
     // Check Fragment Shader
     glGetShaderiv(fs, GL_COMPILE_STATUS, &res);
     glGetShaderiv(fs, GL_INFO_LOG_LENGTH, &logsize);
-    if(logsize > 1){
+    if(logsize > 1) {
+        std::cout << "Fragment shader:\n";
         std::vector<char> errmsg(logsize + 1, 0);
         glGetShaderInfoLog(fs, logsize, 0, &errmsg[0]);
         std::cout << &errmsg[0] << std::endl;
@@ -86,6 +88,7 @@ GLuint create_program(const char* vertexSrc,
     glGetProgramiv(program, GL_LINK_STATUS, &res);
     glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logsize);
     if(logsize > 1) {
+        std::cout << "GLSL program:\n";
         std::vector<char> errmsg(logsize + 1, 0);
         glGetShaderInfoLog(program, logsize, 0, &errmsg[0]);
         std::cout << &errmsg[0] << std::endl;
@@ -100,14 +103,15 @@ GLuint create_program(const char* vertexSrc,
 
 //------------------------------------------------------------------------------
 std::vector< real_t > create_2d_grid(int width, int height,
-                                     int xOffset, int yOffset) {
+                                     int xOffset, int yOffset,
+                                     float value) {
     std::vector< real_t > g(width * height);
     for(int y = 0; y != height; ++y) {
         for(int x = 0; x != width; ++x) {
             if(y < yOffset
                || x < xOffset
                || y >= height - yOffset
-               || x >= width - xOffset) g[y * width + x] = real_t(1);
+               || x >= width - xOffset) g[y * width + x] = value;
             else g[y * width + x] = real_t(0);
         }
     }
@@ -121,35 +125,45 @@ void error_callback(int error, const char* description) {
 
 //------------------------------------------------------------------------------
 void key_callback(GLFWwindow* window, int key,
-                         int scancode, int action, int mods) {
+                  int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
 }
 
+//NOTE: it is important to keep the \n eol at the end of each line
+//      to be able to easily match the line reported in the comiler
+//      error to the location in the source code
+
 //------------------------------------------------------------------------------
 const char kernelSrc[] =
+    "float laplacian(float center, float n, float s, float e, float w) {\n"
+    "  return (n + s + e + w - 4.0f * center);\n"
+    "}"
     "__constant sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE |\n"
     "                           CLK_FILTER_NEAREST |\n"
     "                           CLK_ADDRESS_NONE;\n"
     "__kernel void apply_stencil(read_only image2d_t src,\n"
-    "                            write_only image2d_t out) {\n"
-    "   const float DIFFUSION_SPEED = 0.1f;\n" //make this a kernel parameter
+    "                            write_only image2d_t out,\n"
+    "                            float DIFFUSION_SPEED) {\n"
     "   const int2 c = (int2)(get_global_id(0) + 1, get_global_id(1) + 1);\n"
     "   const float v = (read_imagef(src, sampler, c)).x;\n"
     "   const float n = (read_imagef(src, sampler, c + (int2)( 0,-1))).x;\n"
     "   const float s = (read_imagef(src, sampler, c + (int2)( 0, 1))).x;\n"
     "   const float e = (read_imagef(src, sampler, c + (int2)( 1, 0))).x;\n"
     "   const float w = (read_imagef(src, sampler, c + (int2)(-1, 0))).x;\n"
-    "   const float f = v + DIFFUSION_SPEED * (n + s + e + w - 4.0f*v);\n"
+    "   const float f = v + DIFFUSION_SPEED * laplacian(v, n, s, e, w);\n"
     "   write_imagef(out, c, (float4)(f, 0, 0, 1));\n"
     "}";
-const char fragmentShaderSrc[] =
+const char fragmentShaderSrc[] =  //normalize value to map it to shades of gray
     "#version 330 core\n"
     "in vec2 UV;\n"
     "out vec3 color;\n"
     "uniform sampler2D cltexture;\n"
+    "uniform float maxvalue;\n"
+    "uniform float minvalue;\n"
     "void main() {\n"
-    "  color = texture2D(cltexture, UV).rrr;\n"
+    "  float c = texture2D(cltexture, UV).r;\n"
+    "  color = vec3(smoothstep(minvalue, maxvalue, c));\n"
     "}";
 const char vertexShaderSrc[] =
     "#version 330 core\n"
@@ -158,7 +172,7 @@ const char vertexShaderSrc[] =
     "out vec2 UV;\n"
     "uniform mat4 MVP;\n"
     "void main() {\n"
-    "  gl_Position = vec4(pos.x, pos.y, 0.0f, 1.0f);\n"
+    "  gl_Position = vec4(pos, 0.0f, 1.0f);\n"
     "  UV = tex;\n"
     "}";   
 
@@ -175,16 +189,20 @@ create_cl_gl_interop_properties(cl_platform_id platform);
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
 //USER INPUT
-    if(argc < 4) {
+    if(argc > 1 && argc < 5) {
       std::cout << "usage: " << argv[0]
-                << " <platform id(0, 1...)>"
-                << " <size>"
-                << " <workgroup size>"
+                << "\n <platform id(0, 1...)>"
+                << " <size>\n"
+                << " <workgroup size>\n"
+                << "   (size - 2) DIV (workgroup size) = 0 (no remainder)\n"
+                << " <diffusion speed>\n"
+                << " [boundary value; default = 1]"
+                << " negative values are rendered with shades of green"
                 << std::endl; 
       exit(EXIT_FAILURE);          
     }
     try {
-        const int platformID = atoi(argv[1]);
+        const int platformID = argc > 1 ? atoi(argv[1]) : 0;
         std::vector<cl::Platform> platforms;
         std::vector<cl::Device> devices;
         cl::Platform::get(&platforms);
@@ -194,10 +212,11 @@ int main(int argc, char** argv) {
         }
         platforms[platformID].getDevices(CL_DEVICE_TYPE_DEFAULT, &devices);
         const int STENCIL_SIZE = 3;
-        const int SIZE = atoi(argv[2]);
+        const int SIZE = argc > 1 ? atoi(argv[2]) : 34;
         const int GLOBAL_WORK_SIZE = SIZE - 2 * (STENCIL_SIZE / 2);
-        const int LOCAL_WORK_SIZE = atoi(argv[3]);
-
+        const int LOCAL_WORK_SIZE = argc > 1 ? atoi(argv[3]) : 4;
+        const float DIFFUSION_SPEED = argc > 1 ? atof(argv[4]) : 0.22;
+        const float BOUNDARY_VALUE = argc > 5 ? atof(argv[5]) : 1.0f;
 //GRAPHICS SETUP        
         glfwSetErrorCallback(error_callback);
 
@@ -207,8 +226,8 @@ int main(int argc, char** argv) {
         }
 
         GLFWwindow* window = glfwCreateWindow(640, 480,
-                                              "OpenCL interop", NULL, NULL);
-        if (!window) {
+                                              "OpenCL/GL interop", NULL, NULL);
+        if(!window) {
             std::cerr << "ERROR - glfwCreateWindow" << std::endl;
             glfwTerminate();
             exit(EXIT_FAILURE);
@@ -243,7 +262,7 @@ int main(int argc, char** argv) {
 
 //GEOMETRY AND OPENCL-OPENGL MAPPING
  
-        //geometry: textured quad; the texture color is conputed by
+        //geometry: textured quad; the texture color value is computed by
         //OpenCL
         real_t quad[] = {-1.0f,  1.0f,
                          -1.0f, -1.0f,
@@ -278,7 +297,8 @@ int main(int argc, char** argv) {
 
         std::vector< real_t > grid = create_2d_grid(SIZE, SIZE,
                                                     STENCIL_SIZE / 2,
-                                                    STENCIL_SIZE / 2);
+                                                    STENCIL_SIZE / 2,
+                                                    BOUNDARY_VALUE);
         GLuint texEven;  
         glGenTextures(1, &texEven);
 
@@ -286,7 +306,9 @@ int main(int argc, char** argv) {
         
         glTexImage2D(GL_TEXTURE_2D,
                      0,
-                     GL_RED,
+                     GL_R32F, //IMPORTANT: required for unnormalized values;
+                              //without this all the values in the texture
+                              //are clamped to [0, 1];
                      SIZE,
                      SIZE,
                      0,
@@ -308,7 +330,9 @@ int main(int argc, char** argv) {
         glBindTexture(GL_TEXTURE_2D, texOdd);
         glTexImage2D(GL_TEXTURE_2D,
                      0,
-                     GL_RED,
+                     GL_R32F, //IMPORTANT: required for unnormalized values;
+                              //without this all the values in the texture
+                              //are clamped to [0, 1];
                      SIZE,
                      SIZE,
                      0,
@@ -352,6 +376,8 @@ int main(int argc, char** argv) {
         //extract ids of shader variables
         GLuint mvpID = glGetUniformLocation(glprogram, "MVP");
         GLuint textureID = glGetUniformLocation(glprogram, "cltexture");
+        GLuint maxValueID = glGetUniformLocation(glprogram, "maxvalue");
+        GLuint minValueID = glGetUniformLocation(glprogram, "minvalue");
 
         //enable gl program
         glUseProgram(glprogram);
@@ -359,25 +385,34 @@ int main(int argc, char** argv) {
         //set texture id
         glUniform1i(textureID, 0); //always use texture 0
 
+        //set min and max value; required to map it to shades of gray
+        glUniform1f(maxValueID, BOUNDARY_VALUE);
+        glUniform1f(minValueID, 0.0f);
+
 //COMPUTE AND RENDER LOOP    
         int step = 0;
         GLuint tex = texEven;
-        //rendering & simulation loop
-        while (!glfwWindowShouldClose(window)) {     
+        bool converged = false;
+        std::cout << std::endl;
+        double start = glfwGetTime();
+        double totalTime = 0;
+        while (!glfwWindowShouldClose(window) && !converged) {     
 
-//COMPUTE 
-#if 1            
+//COMPUTE AND CHECK CONVERGENCE           
             glFinish(); //<-- ensure Open*G*L is done
             //acquire CL objects and perform computation step
+            cl_event ev;
             status = clEnqueueAcquireGLObjects(queue(),
                                                1,
-                                               &clbufferEven, 0, 0, 0);
-        
+                                               &clbufferEven, 0, 0, &ev);
+            queue.finish();
+            clWaitForEvents(1, &ev);
             if(status != CL_SUCCESS )
                 throw std::runtime_error("ERROR - clEnqueueAcquireGLObjects");
             status = clEnqueueAcquireGLObjects(queue(),
                                                1,
-                                               &clbufferOdd, 0, 0, 0);
+                                               &clbufferOdd, 0, 0, &ev);
+            queue.finish();
             if(status != CL_SUCCESS )
                 throw std::runtime_error("ERROR - clEnqueueAcquireGLObjects");      
             
@@ -396,7 +431,7 @@ int main(int argc, char** argv) {
             
                 if(status != CL_SUCCESS )
                     throw std::runtime_error("ERROR - clSetKernelArg");
-                tex = texOdd; //display result in clbufferOdd
+                tex = texOdd;
             } else {//even
                 status = clSetKernelArg(kernel(), //kernel
                                         0,      //parameter id
@@ -412,16 +447,41 @@ int main(int argc, char** argv) {
             
                 if(status != CL_SUCCESS )
                     throw std::runtime_error("ERROR - clSetKernelArg");
-                tex = texEven; //display result in texEven buffer                 
+                tex = texEven;                 
             }
             
-            
+            kernel.setArg(2, DIFFUSION_SPEED);
+
             queue.enqueueNDRangeKernel(kernel,
                                        cl::NDRange(0, 0),
                                        cl::NDRange(GLOBAL_WORK_SIZE,
                                                    GLOBAL_WORK_SIZE),
                                        cl::NDRange(LOCAL_WORK_SIZE,
                                                    LOCAL_WORK_SIZE));
+            //CHECK FOR CONVERGENCE: extract element at grid center
+            //and exit if |element value - boundary value| <= EPS    
+            float centerOut = -BOUNDARY_VALUE;
+            cl_mem activeBuffer = IS_EVEN(step) ? clbufferOdd : clbufferEven;
+            const size_t origin[] = {SIZE / 2, SIZE / 2, 0};
+            const size_t region[] = {1, 1, 1};
+            status = clEnqueueReadImage(queue(),
+                                        activeBuffer,
+                                        CL_TRUE,
+                                        origin,
+                                        region,
+                                        0, //row pitch; zero for delegating
+                                           //computation to OpenCL
+                                        0, //slice pitch: for 3D only
+                                        &centerOut,
+                                        0, 0, 0);
+            const double elapsed = glfwGetTime() - start;
+            totalTime += elapsed;
+            start = elapsed;
+            const float MAX_RELATIVE_ERROR = 0.01;//%
+            const float relative_error =
+                fabs(centerOut - BOUNDARY_VALUE) / BOUNDARY_VALUE;
+            const double error_rate = relative_error / elapsed;
+            if(relative_error <= MAX_RELATIVE_ERROR) converged = true;
             
             status = clEnqueueReleaseGLObjects(queue(),
                                                1, &clbufferEven, 0, 0, 0);
@@ -432,8 +492,7 @@ int main(int argc, char** argv) {
             if(status != CL_SUCCESS)
                 throw std::runtime_error("ERROR - clEnqueueReleaseGLObjects");         
             
-            queue.finish(); //<-- ensure Open*C*L is done
-#endif            
+            queue.finish(); //<-- ensure Open*C*L is done          
 //RENDER
             //setup OpenGL matrices: no more matrix stack in OpenGL >= 3 core
             //profile, need to compute modelview and projection matrix manually
@@ -467,9 +526,18 @@ int main(int argc, char** argv) {
             glfwSwapBuffers(window);
             glfwPollEvents();
 
-            ++step; //next step
+            ++step; //next step 
+            std::cout << "\rstep: " << step 
+                      << "   error: " << (100 * relative_error)
+                      << " %   speed: " << (100 * error_rate) << " %/s";
+            std::cout.flush();
         }
 
+        if(converged) 
+            std::cout << "\nConverged in " 
+                      << step << " steps"
+                      << "  time: " << totalTime / 1E3 << " s"
+                      << std::endl;
 //CLEANUP
         glDeleteBuffers(1, &quadvbo);
         glDeleteBuffers(1, &texbo);
@@ -480,6 +548,7 @@ int main(int argc, char** argv) {
         clReleaseMemObject(clbufferOdd);
         clReleaseMemObject(clbufferEven);
 
+        printf("\r");
         glfwTerminate();
         exit(EXIT_SUCCESS);
     } catch(const cl::Error& e) {
