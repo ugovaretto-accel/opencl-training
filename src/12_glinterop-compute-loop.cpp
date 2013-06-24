@@ -17,6 +17,7 @@
 #include <iostream>
 #include <vector>
 #include <stdexcept>
+#include <cmath> //isinf
 
 
 #include <GLFW/glfw3.h>
@@ -126,23 +127,38 @@ void key_callback(GLFWwindow* window, int key,
 
 //------------------------------------------------------------------------------
 const char kernelSrc[] =
-    "float laplacian(float center, float n, float s, float e, float w) {\n"
-    "  return (n + s + e + w - 4.0f * center);\n"
-    "}"
     "__constant sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE |\n"
-    "                           CLK_FILTER_NEAREST |\n"
-    "                           CLK_ADDRESS_NONE;\n"
-    "__kernel void apply_stencil(read_only image2d_t src,\n"
-    "                            write_only image2d_t out,\n"
-    "                            float DIFFUSION_SPEED) {\n"
-    "   const int2 c = (int2)(get_global_id(0) + 1, get_global_id(1) + 1);\n"
+    "                               CLK_FILTER_NEAREST |\n"
+    "                               CLK_ADDRESS_NONE;\n"
+    "float laplacian(read_only image2d_t src, int2 c) {\n"
     "   const float v = (read_imagef(src, sampler, c)).x;\n"
     "   const float n = (read_imagef(src, sampler, c + (int2)( 0,-1))).x;\n"
     "   const float s = (read_imagef(src, sampler, c + (int2)( 0, 1))).x;\n"
     "   const float e = (read_imagef(src, sampler, c + (int2)( 1, 0))).x;\n"
     "   const float w = (read_imagef(src, sampler, c + (int2)(-1, 0))).x;\n"
-    "   const float f = v + DIFFUSION_SPEED * laplacian(v, n, s, e, w);\n"
-    "   write_imagef(out, c, (float4)(f, 0, 0, 1));\n"
+    "   return (n + s + e + w - 4.0f * v);\n"
+    "}\n"
+    // "__kernel void apply_stencil(read_only image2d_t src,\n"
+    // "                            write_only image2d_t out,\n"
+    // "                            float DIFFUSION_SPEED) {\n"
+    // "   const int2 center = (int2)(get_global_id(0) + 2, \n"
+    // "                              get_global_id(1) + 2);\n"
+    // "   const float v = (read_imagef(src, sampler, center)).x;\n"
+    // "   const float n = laplacian(src, center + (int2)(0, 1));\n"
+    // "   const float s = laplacian(src, center + (int2)(0, -1));\n"
+    // "   const float e = laplacian(src, center + (int2)(-1, 0));\n"
+    // "   const float w = laplacian(src, center + (int2)(1, 0));\n"
+    // "   const float f = v + DIFFUSION_SPEED * (n + s + e + w - 4.0f * v);\n"
+    // "   write_imagef(out, center, (float4)(f, 0, 0, 1));\n"
+    // "}";
+    "__kernel void apply_stencil(read_only image2d_t src,\n"
+    "                            write_only image2d_t out,\n"
+    "                            float DIFFUSION_SPEED) {\n"
+    "   const int2 center = (int2)(get_global_id(0) + 1, \n"
+    "                              get_global_id(1) + 1);\n"
+    "   const float v = (read_imagef(src, sampler, center)).x;\n"
+    "   const float f = v + DIFFUSION_SPEED * laplacian(src, center);\n"
+    "   write_imagef(out, center, (float4)(f, 0, 0, 1));\n"
     "}";
 const char fragmentShaderSrc[] =  //normalize value to map it to shades of gray
     "#version 330 core\n"
@@ -286,9 +302,9 @@ int main(int argc, char** argv) {
         //directly
 
         std::vector< float > grid = create_2d_grid(SIZE, SIZE,
-                                                    STENCIL_SIZE / 2,
-                                                    STENCIL_SIZE / 2,
-                                                    BOUNDARY_VALUE);
+                                                   STENCIL_SIZE / 2,
+                                                   STENCIL_SIZE / 2,
+                                                   BOUNDARY_VALUE);
         GLuint texEven;  
         glGenTextures(1, &texEven);
 
@@ -387,6 +403,7 @@ int main(int argc, char** argv) {
         //impossible to pass a cl::Image2D vector to the methods
         std::vector<cl::Memory> clmembuffers(clbuffers.begin(),
                                              clbuffers.end());
+        float prevError = 0;
         while (!glfwWindowShouldClose(window) && !converged) {     
 
 //COMPUTE AND CHECK CONVERGENCE           
@@ -443,20 +460,22 @@ int main(int argc, char** argv) {
             const float MAX_RELATIVE_ERROR = 0.01;//%
             const float relative_error =
                 fabs(centerOut - BOUNDARY_VALUE) / BOUNDARY_VALUE;
-            const double error_rate = relative_error / elapsed;
+            if(step == 0) prevError = relative_error;
+                
+            const double error_rate = -(relative_error - prevError) / elapsed;
             if(relative_error <= MAX_RELATIVE_ERROR) converged = true;
             
             queue.enqueueReleaseGLObjects(&clmembuffers);         
             queue.finish(); //<-- ensure Open*C*L is done          
 //RENDER
-            //setup OpenGL matrices: no more matrix stack in OpenGL >= 3 core
-            //profile, need to compute modelview and projection matrix manually
             // Clear the screen
             glClear(GL_COLOR_BUFFER_BIT);
         
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
             glViewport(0, 0, width, height);
+            //setup OpenGL matrices: no more matrix stack in OpenGL >= 3 core
+            //profile, need to compute modelview and projection matrix manually
             const float ratio = width / float(height);
             const glm::mat4 orthoProj = glm::ortho(-ratio, ratio,
                                                    -1.0f,  1.0f,
@@ -482,9 +501,21 @@ int main(int argc, char** argv) {
             glfwPollEvents();
 
             ++step; //next step 
+            //printout if all values are not NAN
+            if(relative_error != relative_error || error_rate != error_rate) {
+                std::cout << "\nNaN" << std::endl;
+                exit(EXIT_SUCCESS); //EXIT_FAILURE is for execution errors not
+                                    //for errors related to data
+            }
+            //if any value is inf do exit
+            if(isinf(relative_error) || isinf(error_rate)) {
+                std::cout << "\ninf" << std::endl;
+                exit(EXIT_SUCCESS); //EXIT_FAILURE is for execution errors not
+                                    //for errors related to data
+            }
             std::cout << "\rstep: " << step 
                       << "   error: " << (100 * relative_error)
-                      << " %   speed: " << (100 * error_rate) << " %/s";
+                      << " %   speed: " << (100 * error_rate) << " %/s   ";
             std::cout.flush();
         }
 
