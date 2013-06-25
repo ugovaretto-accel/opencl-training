@@ -500,13 +500,13 @@ int main(int argc, char** argv) {
             glfwPollEvents();
 
             ++step; //next step 
-            //printout if all values are not NAN
+
+            //if any value is NaN or inf do exit
             if(relative_error != relative_error || error_rate != error_rate) {
                 std::cout << "\nNaN" << std::endl;
                 exit(EXIT_SUCCESS); //EXIT_FAILURE is for execution errors not
                                     //for errors related to data
             }
-            //if any value is inf do exit
             if(isinf(relative_error) || isinf(error_rate)) {
                 std::cout << "\ninf" << std::endl;
                 exit(EXIT_SUCCESS); //EXIT_FAILURE is for execution errors not
