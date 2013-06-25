@@ -18,6 +18,11 @@ to load the kernel; add a utility function to perform compilation.
 
 [done] MPI
 
+[done] OpenGL interop : show results of stencil computations through OpenGL
+       (w/GLFW); note: remote connections through vglconnect do
+       not work; turbovnc client with vglrun doesn't work either with GLFW
+       because of xkb-related issues: redo with (FREE)GLUT
+
 Show example of standard OpenCL compiler switches; in particular show how
 '-g' can be used to debug kernel code 
 
@@ -40,8 +45,5 @@ Events:
 * sync between parallel kernels
 * events in kernels with async local <--> global copies and (possibly)
   overlap of computation and data exchange  
-
-
-OpenGL interop: e.g. show results of stencil computations through OpenGL(w/GLFW)
 
 OpenCL 1.2 ?
