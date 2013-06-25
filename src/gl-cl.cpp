@@ -22,7 +22,6 @@
  #include <CL/cl_gl.h> 
 #endif
 
-
 typedef std::vector< cl_context_properties > CLProperties;
 
 //when using the C++ API pass cl::Platform::operator()() to access
