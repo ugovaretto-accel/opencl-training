@@ -456,14 +456,13 @@ int main(int argc, char** argv) {
             const double elapsed = glfwGetTime() - start;
             totalTime += elapsed;
             start = elapsed;
-            const float MAX_RELATIVE_ERROR = 0.01;//%
+            const float MAX_RELATIVE_ERROR = 0.01;//1%
             const float relative_error =
                 fabs(centerOut - BOUNDARY_VALUE) / BOUNDARY_VALUE;
-            if(step == 0) prevError = relative_error;
                 
             const double error_rate = -(relative_error - prevError) / elapsed;
             if(relative_error <= MAX_RELATIVE_ERROR) converged = true;
-            
+            prevError = relative_error; 
             queue.enqueueReleaseGLObjects(&clmembuffers);         
             queue.finish(); //<-- ensure Open*C*L is done          
 //RENDER
