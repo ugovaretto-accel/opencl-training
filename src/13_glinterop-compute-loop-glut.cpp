@@ -430,11 +430,12 @@ int main(int argc, char** argv) {
                                    &centerOut);
             //problem: GLUT_ELAPSED_TIME has 1E-3s resolution; need to add
             //         an epsilon if elapsed time is zero
-            const double elapsed = double(glutGet(GLUT_ELAPSED_TIME)) / 1E3
-                                   - start;
-            if(elapsed < 1) elapsed = 1E6; //add a us                        
+            double t = double(glutGet(GLUT_ELAPSED_TIME));
+            double elapsed = (t - start) / 1E3;
+            start = t;
+                        
             totalTime += elapsed;
-            start = elapsed;
+            
             const float MAX_RELATIVE_ERROR = 0.01;//1%
             const float relative_error =
                 fabs(centerOut - BOUNDARY_VALUE) / BOUNDARY_VALUE;
@@ -499,7 +500,7 @@ int main(int argc, char** argv) {
         if(converged) 
             std::cout << "\nConverged in " 
                       << step << " steps"
-                      << "  time: " << totalTime / 1E3 << " s"
+                      << "  time: " << totalTime  << " s"
                       << std::endl;
 //CLEANUP
         glDeleteBuffers(1, &quadvbo);
