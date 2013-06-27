@@ -1,6 +1,9 @@
 //OpenGL-CL interop: full example with textures and compute loop
 //Author: Ugo Varetto
 
+//Note that this code does not work properly when run from within vglrun on
+//remote systems; whether with vglconnect or VNC
+
 //Requires GLUT and GLM, to deal with the missing support for matrix stack
 //in OpenGL >= 3.3
 
@@ -9,19 +12,14 @@
 // -DGL_GLEXT_PROTOTYPES -lglut -lGLEW \
 // -I/usr/local/cuda/include -lOpenCL \
 // -I/usr/local/glm/include
-// -I/usr/local/glew/include/GL
-// -L/usr/local/glew/lib
 
 #define __CL_ENABLE_EXCEPTIONS
-
-#include <glew.h>
 
 #include <cstdlib>
 #include <iostream>
 #include <vector>
 #include <stdexcept>
 #include <cmath> //isinf
-
 
 #include <GL/freeglut.h>
 
@@ -129,19 +127,6 @@ const char kernelSrc[] =
     "   const float w = (read_imagef(src, sampler, c + (int2)(-1, 0))).x;\n"
     "   return (n + s + e + w - 4.0f * v);\n"
     "}\n"
-    // "__kernel void apply_stencil(read_only image2d_t src,\n"
-    // "                            write_only image2d_t out,\n"
-    // "                            float DIFFUSION_SPEED) {\n"
-    // "   const int2 center = (int2)(get_global_id(0) + 2, \n"
-    // "                              get_global_id(1) + 2);\n"
-    // "   const float v = (read_imagef(src, sampler, center)).x;\n"
-    // "   const float n = laplacian(src, center + (int2)(0, 1));\n"
-    // "   const float s = laplacian(src, center + (int2)(0, -1));\n"
-    // "   const float e = laplacian(src, center + (int2)(-1, 0));\n"
-    // "   const float w = laplacian(src, center + (int2)(1, 0));\n"
-    // "   const float f = v + DIFFUSION_SPEED * (n + s + e + w - 4.0f * v);\n"
-    // "   write_imagef(out, center, (float4)(f, 0, 0, 1));\n"
-    // "}";
     "__kernel void apply_stencil(read_only image2d_t src,\n"
     "                            write_only image2d_t out,\n"
     "                            float DIFFUSION_SPEED) {\n"
@@ -226,17 +211,12 @@ int main(int argc, char** argv) {
         const float DIFFUSION_SPEED = argc > 1 ? atof(argv[4]) : 0.22;
         const float BOUNDARY_VALUE = argc > 5 ? atof(argv[5]) : 1.0f;
 //GRAPHICS SETUP     
-        glewInit();
         glutInit(&argc, argv);
-        glutInitContextVersion(3,3);
-        glutInitContextProfile(GLUT_CORE_PROFILE);
-        //glutInitContextFlags (GLUT_FORWARD_COMPATIBLE | GLUT_DEBUG);
-        
+        glutInitDisplayMode(GLUT_RGBA);
         glutInitWindowSize(640,480);
         glutKeyboardFunc(key_callback);
         glutCreateWindow("OpenCL - GL interop");     
-        glutSwapBuffers();
-
+ 
 //OPENCL SETUP        
         //OpenCL context
         CLContextProperties prop = 
@@ -388,7 +368,7 @@ int main(int argc, char** argv) {
         GLuint tex = texEven;
         bool converged = false;
         std::cout << std::endl;
-        double start = 0;//glfwGetTime();
+        double start = glutGet(GLUT_ELAPSED_TIME) / double(1E3);
         double totalTime = 0;
         //make a copy of cl images into a cl::Memory array:
         //the following is required to invoke acquire/release GL object
@@ -398,7 +378,7 @@ int main(int argc, char** argv) {
         std::vector<cl::Memory> clmembuffers(clbuffers.begin(),
                                              clbuffers.end());
         float prevError = 0;
-        while (!converged) {     
+        while(!converged) {     
 
 //COMPUTE AND CHECK CONVERGENCE           
             glFinish(); //<-- ensure Open*G*L is done
@@ -448,7 +428,11 @@ int main(int argc, char** argv) {
                                       //computation to OpenCL
                                    0, //slice pitch: for 3D only
                                    &centerOut);
-            const double elapsed = 1;//glfwGetTime() - start;
+            //problem: GLUT_ELAPSED_TIME has 1E-3s resolution; need to add
+            //         an epsilon if elapsed time is zero
+            const double elapsed = double(glutGet(GLUT_ELAPSED_TIME)) / 1E3
+                                   - start;
+            if(elapsed < 1) elapsed = 1E6; //add a us                        
             totalTime += elapsed;
             start = elapsed;
             const float MAX_RELATIVE_ERROR = 0.01;//1%
@@ -509,7 +493,7 @@ int main(int argc, char** argv) {
                       << "   error: " << (100 * relative_error)
                       << " %   speed: " << (100 * error_rate) << " %/s   ";
             std::cout.flush();
-            glutMainLoopEvent();
+            glutMainLoopEvent(); //<-(reported) bug in freeglut: might no work
         }
 
         if(converged) 

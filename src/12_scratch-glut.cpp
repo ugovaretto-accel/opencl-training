@@ -9,7 +9,7 @@
 // -DGL_GLEXT_PROTOTYPES -L/usr/local/glfw/lib -lglfw \
 // -I/usr/local/glm/include
 
-#include <GLFW/glfw3.h>
+#include <GL/freeglut.h>
 
 // Include GLM
 #include <glm/glm.hpp>
@@ -27,6 +27,8 @@ const GLenum GL_REAL_T = GL_DOUBLE;
 typedef float real_t;
 const GLenum GL_REAL_T = GL_FLOAT;
 #endif
+
+#define LOG_
 
 #ifdef LOG_
 #define gle std::cout << "[GL] - " \
@@ -91,16 +93,14 @@ GLuint create_program(const char* vertexSrc,
 }
 
 //------------------------------------------------------------------------------
-void error_callback(int error, const char* description) {
-    std::cerr << description << std::endl;
-}
-
-//------------------------------------------------------------------------------
-void key_callback(GLFWwindow* window, int key,
-                         int scancode, int action, int mods) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, GL_TRUE);
-}
+void key_callback(unsigned char key, int xx, int yy) {
+    switch(key) {
+        case 27: // QUIT
+            exit(EXIT_SUCCESS);
+        default:
+            ;    
+    }
+}    
 
 //------------------------------------------------------------------------------
 const char fragmentShaderSrc[] =
@@ -118,7 +118,7 @@ const char vertexShaderSrc[] =
     "smooth out vec2 UV;\n"
     "uniform mat4 MVP;\n"
     "void main() {\n"
-    "  gl_Position = MVP * pos;\n"
+    "  gl_Position = pos;\n"
     "  UV = tex;\n"
     "}";   
 
@@ -134,30 +134,16 @@ int main(int argc, char** argv) {
     }
     const int SIZE = atoi(argv[1]);
 //GRAPHICS SETUP        
-    glfwSetErrorCallback(error_callback);
-
-    if(!glfwInit()) {
-        std::cerr << "ERROR - glfwInit" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    //WARNING: THIS DOESN'T WORK
-    // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    GLFWwindow* window = glfwCreateWindow(640, 480,
-                                          "OpenCL-GL interop", NULL, NULL);
-    if (!window) {
-        std::cerr << "ERROR - glfwCreateWindow" << std::endl;
-        glfwTerminate();
-        exit(EXIT_FAILURE);
-    }
-    
-
-    glfwSetKeyCallback(window, key_callback);
-
-    glfwMakeContextCurrent(window);
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_RGBA);
+    //the following does not work!
+    // glutInitContextVersion(3,3);
+    // glutInitContextProfile(GLUT_CORE_PROFILE);
+    //glutInitContextFlags (GLUT_FORWARD_COMPATIBLE | GLUT_DEBUG);
+        
+    glutInitWindowSize(640,480);
+    glutKeyboardFunc(key_callback);
+    glutCreateWindow("GLUT");     
 
 
     std::cout << "OpenGL version: " << glGetString(GL_VERSION) << std::endl;
@@ -194,7 +180,7 @@ int main(int argc, char** argv) {
     GLuint texbo;  
     glGenBuffers(1, &texbo);
     glBindBuffer(GL_ARRAY_BUFFER, texbo);
-    glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(real_t),
+    glBufferData(GL_ARRAY_BUFFER, 6 * 2 * sizeof(real_t),
                  &texcoord[0], GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
@@ -205,11 +191,10 @@ int main(int argc, char** argv) {
     glGenTextures(1, &tex);
 
     glBindTexture(GL_TEXTURE_2D, tex);
-    const char imagepath[] = "img.tga";
-
+    
     glTexImage2D(GL_TEXTURE_2D,
                  0,
-                 GL_RED,
+                 GL_R32F,
                  SIZE,
                  SIZE,
                  0,
@@ -247,32 +232,33 @@ int main(int argc, char** argv) {
 
     //beckground color        
     glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
-
 //RENDER LOOP    
     //rendering & simulation loop
-    while (!glfwWindowShouldClose(window)) {     
+    while(true) {    
         glClear(GL_COLOR_BUFFER_BIT);
 
         //setup OpenGL matrices: no more matrix stack in OpenGL >= 3 core
         //profile, need to compute modelview and projection matrix manually
         // Clear the screen    
-        int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
+        const int width = glutGet(GLUT_WINDOW_WIDTH);
+        const int height = glutGet(GLUT_WINDOW_HEIGHT);
+        glViewport(0, 0, width, height);
         const float ratio = width / float(height);
         const glm::mat4 orthoProj = glm::ortho(-ratio, ratio,
                                                -1.0f,  1.0f,
                                                 1.0f,  -1.0f);
         const glm::mat4 modelView = glm::mat4(1.0f);
         const glm::mat4 MVP        = orthoProj * modelView;
-        glViewport(0, 0, width, height);
-
+       
         glUniformMatrix4fv(mvpID, 1, GL_FALSE, glm::value_ptr(MVP));
-      
    
         //standard OpenGL core profile rendering
+       
         glEnableVertexAttribArray(0);
+    
 
         glBindBuffer(GL_ARRAY_BUFFER, quadvbo);
+    
 
         glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
@@ -282,17 +268,14 @@ int main(int argc, char** argv) {
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+        glutSwapBuffers();
+        glutMainLoopEvent();
     }
 
 //CLEANUP
     glDeleteBuffers(1, &quadvbo);
     glDeleteBuffers(1, &texbo);
     glDeleteTextures(1, &tex);
-    glfwDestroyWindow(window);
-
-    glfwTerminate();
     exit(EXIT_SUCCESS);
     return 0;
 }
