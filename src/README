@@ -9,7 +9,7 @@ On most Linux systems(other than Cray) the OpenCL includes are under
 found under /etc/OpenCL to select the requested OpenCL implementation at
 run-time.
 
-Look at the ".sh" scripts for information on how to build and run examples. 
+Look at the ".sh" scripts for information on how to build and run the examples. 
 
 Structure
 ---------
