@@ -20,8 +20,11 @@
 //
 // The host version of the dot product is either std::inner_product or
 // a block version in case the size is a multiple of 16ki which
-// usually result in a 3 to 4x speedup on most systems 
-
+// usually result in a 3 to 4x speedup on most systems.
+//
+// Note: with icc 13.1.3 on SandyBridge 'serial' code is typically only
+// 2x slower than OpenCL with no need for explicit caching, with gcc 4.8.1
+// 'serial' -O3 code is usullay 4x slower than OpenCL.
 
 #include <iostream>
 #include <cstdlib>
@@ -104,7 +107,7 @@ int main(int argc, char** argv) {
     const int SIZE = atoi(argv[argc - 3]); // number of elements
     const int CL_ELEMENT_SIZE = atoi(argv[argc - 1]); // number of per-element
                                                       // components
-    const CPU_BLOCK_SIZE = 16384; //use block dot product if SIZE divisible
+    const int CPU_BLOCK_SIZE = 16384; //use block dot product if SIZE divisible
                                   //by this value
     const size_t BYTE_SIZE = SIZE * sizeof(real_t);
     const int BLOCK_SIZE = atoi(argv[argc - 2]); //local cache for reduction
@@ -248,7 +251,7 @@ int main(int argc, char** argv) {
     timespec hostStart = {0, 0};
     timespec hostEnd = {0, 0};
     clock_gettime(CLOCK_MONOTONIC, &hostStart);
-    if(SIZE / CPU_BLOCK_SIZE != 0) hostDot = host_dot_product(V1, V2);
+    if(SIZE % CPU_BLOCK_SIZE != 0) hostDot = host_dot_product(V1, V2);
     else hostDot = host_dot_block(&V1[0], &V2[0], SIZE, CPU_BLOCK_SIZE);
     clock_gettime(CLOCK_MONOTONIC, &hostEnd);
     const double host_time = time_diff_ms(hostStart, hostEnd);
@@ -263,7 +266,7 @@ int main(int argc, char** argv) {
                   << "ms" << std::endl;
         std::cout << "transfer:       " << dataTransferTime_ms 
                   << "ms\n" << std::endl;
-        if(SIZE / CPU_BLOCK_SIZE != 0) {         
+        if(SIZE % CPU_BLOCK_SIZE != 0) {         
             std::cout << "host:              " << host_time << "ms" << std::endl;
         } else {
             std::cout << "host (16k blocks): " << host_time << "ms" << std::endl; 
