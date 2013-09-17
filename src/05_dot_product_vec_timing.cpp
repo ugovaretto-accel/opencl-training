@@ -227,11 +227,15 @@ int main(int argc, char** argv) {
     std::cout << deviceDot << ' ' << hostDot << std::endl;
 
     if(check_result(hostDot, deviceDot, EPS)) {
-        std::cout << "PASSED: " << (accTime_ms + kernelElapsedTime_ms) 
+        std::cout << "PASSED" << std::endl;
+        std::cout << "kernel:         " << kernelElapsedTime_ms << "ms\n"
+                  << "host reduction: " << accTime_ms << "ms\n"
+                  << "total:          " << (kernelElapsedTime_ms + accTime_ms)  
                   << "ms" << std::endl;
-        std::cout << "       " << host_time << "ms" << std::endl;
-        std::cout << "Transfer time " << dataTransferTime_ms 
-                  << "ms" << std::endl;
+        std::cout << "transfer:       " << dataTransferTime_ms 
+                  << "ms\n" << std::endl;
+        std::cout << "host:           " << host_time << "ms" << std::endl;
+       
     } else {
         std::cout << "FAILED" << std::endl;
     }   
