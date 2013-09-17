@@ -1,4 +1,4 @@
-//Dot product; example of parallel reduciton
+//Dot product; example of parallel reduction
 //Author: Ugo Varetto
 #include <iostream>
 #include <cstdlib>

@@ -1,5 +1,19 @@
-//Dot product; example of parallel reduciton
 //Author: Ugo Varetto
+//Dot product: example of parallel reduction; supports vector data types in
+//kernel, in case vector data types such as double4 are used the
+//CL_ELEMENT_SIZE constant must be initialized with the vector size e.g. 4
+//for 4-element vectors: pass '4' as the last element on the command line.
+//TO HAVE CORRECT RESULTS ALWAYS #define USE_DOUBLE
+//
+// using monotonic clock to compute time intervals: link with librt (-lrt)
+// compilation:
+// c++ 05_dot_product_vec_timing.cpp clutil.cpp -lOpenCL -lrt -DUSE_DOUBLE
+// run without arguments to see a list of supported options
+// sample execution
+// ('aprun' on Cray) ./a.out "Intel(R) OpenCL" default 0 
+// ./src/kernels/05_dot_product_vec.cl dotprod 4
+
+
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
@@ -18,6 +32,12 @@ typedef double real_t;
 #else
 typedef float real_t;
 #endif
+
+//------------------------------------------------------------------------------
+double time_diff_ms(const timespec& start, const timespec& end) {
+    return end.tv_sec * 1E3 +  end.tv_nsec / 1E6
+           - (start.tv_sec * 1E3 + start.tv_nsec / 1E6);  
+}
 
 //------------------------------------------------------------------------------
 std::vector< real_t > create_vector(int size) {
@@ -42,17 +62,18 @@ bool check_result(real_t v1, real_t v2, double eps) {
 
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
-    if(argc < 6) {
+
+    if(argc < 7) {
         std::cerr << "usage: " << argv[0]
                   << " <platform name> <device type = default | cpu | gpu "
                      "| acc | all>  <device num> <OpenCL source file path>"
-                     " <kernel name>"
+                     " <kernel name> <vec element width>"
                   << std::endl;
         exit(EXIT_FAILURE);   
     }
     const int SIZE = 1024*1024*256; // number of elements
-    const int CL_ELEMENT_SIZE = 4; // number of per-element components
-
+    const int CL_ELEMENT_SIZE = atoi(argv[argc - 1]); // number of per-element
+                                                      // components
     const size_t BYTE_SIZE = SIZE * sizeof(real_t);
     const int BLOCK_SIZE = 64; 
     const int REDUCED_SIZE = SIZE / BLOCK_SIZE;
@@ -60,11 +81,12 @@ int main(int argc, char** argv) {
     //setup text header that will be prefixed to opencl code
     std::ostringstream clheaderStream;
     clheaderStream << "#define BLOCK_SIZE " << BLOCK_SIZE << '\n';
+    clheaderStream << "#define VEC_WIDTH " << CL_ELEMENT_SIZE << '\n';
 #ifdef USE_DOUBLE    
     clheaderStream << "#define DOUBLE\n";
     const double EPS = 0.000000001;
 #else
-    const double EPS = 0.00001;
+    const float EPS = 0.0001;
 #endif
     const bool PROFILE_ENABLE_OPTION = true;    
     CLEnv clenv = create_clenv(argv[1], argv[2], atoi(argv[3]),
@@ -125,10 +147,14 @@ int main(int argc, char** argv) {
     const size_t globalWorkSize[1] = {SIZE / CL_ELEMENT_SIZE};
     //number of per-workgroup local threads
     const size_t localWorkSize[1] = {BLOCK_SIZE}; 
+//------------------------------------------------------------------------------    
     // make sure all work on the OpenCL device is finished
     status = clFinish(clenv.commandQueue);
     check_cl_error(status, "clFinish");
     cl_event profilingEvent;
+    timespec kernelStart = {0,  0};
+    timespec kernelEnd = {0, 0};
+    clock_gettime(CLOCK_MONOTONIC, &kernelStart);
     //launch kernel
     status = clEnqueueNDRangeKernel(clenv.commandQueue, //queue
                                     clenv.kernel, //kernel                                   
@@ -151,26 +177,11 @@ int main(int argc, char** argv) {
     //termination when issuing a subsequent blocking data transfer operation
     check_cl_error(status, "clFinish");
     status = clWaitForEvents(1, &profilingEvent);
+    clock_gettime(CLOCK_MONOTONIC, &kernelEnd);
     check_cl_error(status, "clWaitForEvents");
-    cl_ulong kernelStartTime = cl_ulong(0);
-    cl_ulong kernelEndTime   = cl_ulong(0);
-    double kernelElapsedTime_ms = double(0);
-    size_t retBytes = size_t(0);
-    status = clGetEventProfilingInfo(profilingEvent,
-                   CL_PROFILING_COMMAND_QUEUED,
-                   sizeof(cl_ulong),
-                   &kernelStartTime, &retBytes);
-    check_cl_error(status, "clGetEventProfilingInfo");
-    status = clGetEventProfilingInfo(profilingEvent,
-                   CL_PROFILING_COMMAND_END,
-                   sizeof(cl_ulong),
-                   &kernelEndTime, &retBytes);
-    check_cl_error(status, "clGetEventProfilingInfo");
-    //event timing is reported in nanoseconds: divide by 1e6 to get
-    //time in milliseconds
-    kernelElapsedTime_ms =  double((kernelEndTime - kernelStartTime) / 1E6);        
-//==============================================================================
-
+    //get_cl_time(profilingEvent);  //gives similar results to the following 
+    const double kernelElapsedTime_ms = time_diff_ms(kernelStart, kernelEnd);
+//-----------------------------------------------------------------------------
     //read back and print results
     std::vector< real_t > partialDot(REDUCED_SIZE); 
     status = clEnqueueReadBuffer(clenv.commandQueue,
@@ -184,30 +195,34 @@ int main(int argc, char** argv) {
                                     //complete before transfer executed
                                  0, //list of events that need to complete
                                     //before transfer executed
-                                 0); //event identifying this specific operation
+                                 &profilingEvent); //event identifying this specific operation
     check_cl_error(status, "clEnqueueReadBuffer");
+
+    //conputes data transfer, consider using mapped, page-locked memory
+    const double dataTransferTime_ms = get_cl_time(profilingEvent);
+
+    timespec accStart = {0, 0};
+    timespec accEnd   = {0, 0};
     
-    timespec ts_start;
-    timespec ts_end;
-    
-    clock_gettime(CLOCK_MONOTONIC, &ts_start);
+    clock_gettime(CLOCK_MONOTONIC, &accStart);
     deviceDot = std::accumulate(partialDot.begin(),
                                 partialDot.end(), real_t(0));
-    clock_gettime(CLOCK_MONOTONIC, &ts_end);
-    const double off = ts_end.tv_sec * 10E3 + ts_end.tv_nsec / 1E6
-                             - (ts_start.tv_nsec / 1E6 + ts_start.tv_sec * 10E3);
+    clock_gettime(CLOCK_MONOTONIC, &accEnd);
+    const double accTime_ms = time_diff_ms(accStart, accEnd);
 
-    clock_gettime(CLOCK_MONOTONIC, &ts_start);
+    timespec hostStart = {0, 0};
+    timespec hostEnd = {0, 0};
+    clock_gettime(CLOCK_MONOTONIC, &hostStart);
     hostDot = host_dot_product(V1, V2);
-    clock_gettime(CLOCK_MONOTONIC, &ts_end);
-    const double host_time = ts_end.tv_sec * 10E3 + ts_end.tv_nsec / 1E6
-                             - (ts_start.tv_nsec / 1E6 + ts_start.tv_sec * 10E3);
+    clock_gettime(CLOCK_MONOTONIC, &hostEnd);
+    const double host_time = time_diff_ms(hostStart, hostEnd);
 
     std::cout << deviceDot << ' ' << hostDot << std::endl;
 
     if(check_result(hostDot, deviceDot, EPS)) {
-        std::cout << "PASSED " << (off + kernelElapsedTime_ms) << "ms" << std::endl;
+        std::cout << "PASSED " << (accTime_ms + kernelElapsedTime_ms) << "ms" << std::endl;
         std::cout << "       " << host_time << "ms" << std::endl;
+        std::cout << "Transfer time " << dataTransferTime_ms << "ms" << std::endl;
     } else {
         std::cout << "FAILED" << std::endl;
     }   

@@ -483,3 +483,23 @@ double timeEnqueueNDRangeKernel(cl_command_queue command_queue,
     kernelElapsedTime_ms =  (double)(kernelEndTime - kernelStartTime) / 1E6;
     return kernelElapsedTime_ms;
 }
+
+//------------------------------------------------------------------------------
+double get_cl_time(cl_event ev) {
+    cl_ulong startTime = cl_ulong(0);
+    cl_ulong endTime   = cl_ulong(0);
+    size_t retBytes = size_t(0);
+    cl_int status = clGetEventProfilingInfo(ev,
+                   CL_PROFILING_COMMAND_QUEUED,
+                   sizeof(cl_ulong),
+                   &startTime, &retBytes);
+    check_cl_error(status, "clGetEventProfilingInfo");
+    status = clGetEventProfilingInfo(ev,
+                   CL_PROFILING_COMMAND_END,
+                   sizeof(cl_ulong),
+                   &endTime, &retBytes);
+    check_cl_error(status, "clGetEventProfilingInfo");
+    //event timing is reported in nanoseconds: divide by 1e6 to get
+    //time in milliseconds
+    return double((endTime - startTime) / 1E6);    
+}

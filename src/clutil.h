@@ -48,3 +48,4 @@ double timeEnqueueNDRangeKernel(cl_command_queue command_queue,
                                 const size_t *local_work_size,
                                 cl_uint num_events_in_wait_list,
                                 const cl_event *event_wait_list);
+double get_cl_time(cl_event ev);
