@@ -32,7 +32,7 @@ module load cudatoolkit
 
 g++ ../src/02_create_context.cpp \
   -I/opt/nvidia/cudatoolkit/5.0.35.102/include \
-  -L//opt/cray/nvidia/default/lib64 \
+  -L/opt/cray/nvidia/default/lib64 \
   -lOpenCL
 
 Run:

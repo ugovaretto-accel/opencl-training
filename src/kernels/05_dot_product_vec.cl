@@ -20,6 +20,8 @@ typedef double vec_real_t;
 VEC_TYPE_DEF(double, 4);
 #elif VEC_WIDTH == 8
 VEC_TYPE_DEF(double, 8);
+#elif VEC_WIDTH == 16
+VEC_TYPE_DEF(double, 16);
 #else
 #error VEC_WIDTH 
 #endif 
@@ -33,6 +35,8 @@ typedef float vec_real_t;
 VEC_TYPE_DEF(float, 4);
 #elif VEC_WIDTH == 8
 VEC_TYPE_DEF(float, 8);
+#elif VEC_WIDTH == 16
+VEC_TYPE_DEF(float, 16);
 #else
 #error VEC_WIDTH 
 #endif 
@@ -47,6 +51,9 @@ VEC_TYPE_DEF(float, 8);
 #define VEC_SUM(r) r[0] + r[1] + r[2] + r[3]
 #elif VEC_WIDTH == 8
 #define VEC_SUM(r) r[0] + r[1] + r[2] + r[3] + r[4] + r[5] + r[6] + r[7]
+#elif VEC_WIDTH == 16
+#define VEC_SUM(r) r[0] + r[1] + r[2] + r[3] + r[4] + r[5] + r[6] + r[7] \
+                   + r[8] + r[9] + r[10] + r[11] + r[12] + r[13] + r[14] + r[15]  
 #endif
 
 

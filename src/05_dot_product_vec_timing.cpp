@@ -9,10 +9,14 @@
 // compilation:
 // c++ 05_dot_product_vec_timing.cpp clutil.cpp -lOpenCL -lrt -DUSE_DOUBLE
 // run without arguments to see a list of supported options
-// sample execution
-// ('aprun' on Cray) ./a.out "Intel(R) OpenCL" default 0 
-// ./src/kernels/05_dot_product_vec.cl dotprod 4
-
+//
+// sample execution with
+// 256M (1024*1024*256) doubles,
+// 64 thread group
+// 4-component elements (double4)  
+//
+// ('aprun' on Cray) ./a.out "Intel(R) OpenCL" default 0 \
+// ./src/kernels/05_dot_product_vec.cl dotprod 268435456 1024 8
 
 #include <iostream>
 #include <cstdlib>
@@ -63,30 +67,31 @@ bool check_result(real_t v1, real_t v2, double eps) {
 //------------------------------------------------------------------------------
 int main(int argc, char** argv) {
 
-    if(argc < 7) {
+    if(argc < 9) {
         std::cerr << "usage: " << argv[0]
                   << " <platform name> <device type = default | cpu | gpu "
                      "| acc | all>  <device num> <OpenCL source file path>"
-                     " <kernel name> <vec element width>"
+                     " <kernel name> <size> <local size> <vec element width>"
                   << std::endl;
         exit(EXIT_FAILURE);   
     }
-    const int SIZE = 1024*1024*256; // number of elements
+    const int SIZE = atoi(argv[argc - 3]); // number of elements
     const int CL_ELEMENT_SIZE = atoi(argv[argc - 1]); // number of per-element
                                                       // components
     const size_t BYTE_SIZE = SIZE * sizeof(real_t);
-    const int BLOCK_SIZE = 64; 
+    const int BLOCK_SIZE = atoi(argv[argc - 2]); //local cache for reduction
+                                                 //equal to local workgroup size
     const int REDUCED_SIZE = SIZE / BLOCK_SIZE;
     const int REDUCED_BYTE_SIZE = REDUCED_SIZE * sizeof(real_t);
     //setup text header that will be prefixed to opencl code
     std::ostringstream clheaderStream;
-    clheaderStream << "#define BLOCK_SIZE " << BLOCK_SIZE << '\n';
-    clheaderStream << "#define VEC_WIDTH " << CL_ELEMENT_SIZE << '\n';
+    clheaderStream << "#define BLOCK_SIZE " << BLOCK_SIZE      << '\n';
+    clheaderStream << "#define VEC_WIDTH "  << CL_ELEMENT_SIZE << '\n';
 #ifdef USE_DOUBLE    
     clheaderStream << "#define DOUBLE\n";
     const double EPS = 0.000000001;
 #else
-    const float EPS = 0.0001;
+    const float EPS = 0.00001;
 #endif
     const bool PROFILE_ENABLE_OPTION = true;    
     CLEnv clenv = create_clenv(argv[1], argv[2], atoi(argv[3]),
@@ -99,7 +104,7 @@ int main(int argc, char** argv) {
     std::vector<real_t> V2 = create_vector(SIZE);
     real_t hostDot = std::numeric_limits< real_t >::quiet_NaN();
     real_t deviceDot = std::numeric_limits< real_t >::quiet_NaN();      
-    
+//ALLOCATE DATA AND COPY TO DEVICE    
     //allocate output buffer on OpenCL device
     //the partialReduction array contains a sequence of dot products
     //computed on sub-arrays of size BLOCK_SIZE
@@ -147,7 +152,7 @@ int main(int argc, char** argv) {
     const size_t globalWorkSize[1] = {SIZE / CL_ELEMENT_SIZE};
     //number of per-workgroup local threads
     const size_t localWorkSize[1] = {BLOCK_SIZE}; 
-//------------------------------------------------------------------------------    
+//LAUNCH KERNEL
     // make sure all work on the OpenCL device is finished
     status = clFinish(clenv.commandQueue);
     check_cl_error(status, "clFinish");
@@ -181,7 +186,7 @@ int main(int argc, char** argv) {
     check_cl_error(status, "clWaitForEvents");
     //get_cl_time(profilingEvent);  //gives similar results to the following 
     const double kernelElapsedTime_ms = time_diff_ms(kernelStart, kernelEnd);
-//-----------------------------------------------------------------------------
+//READ DATA FROM DEVICE
     //read back and print results
     std::vector< real_t > partialDot(REDUCED_SIZE); 
     status = clEnqueueReadBuffer(clenv.commandQueue,
@@ -195,34 +200,38 @@ int main(int argc, char** argv) {
                                     //complete before transfer executed
                                  0, //list of events that need to complete
                                     //before transfer executed
-                                 &profilingEvent); //event identifying this specific operation
+                                 &profilingEvent); //event identifying this
+                                                   //specific operation
     check_cl_error(status, "clEnqueueReadBuffer");
 
-    //conputes data transfer, consider using mapped, page-locked memory
     const double dataTransferTime_ms = get_cl_time(profilingEvent);
 
     timespec accStart = {0, 0};
     timespec accEnd   = {0, 0};
-    
+
+//FINAL REDUCTION ON HOST    
     clock_gettime(CLOCK_MONOTONIC, &accStart);
     deviceDot = std::accumulate(partialDot.begin(),
                                 partialDot.end(), real_t(0));
     clock_gettime(CLOCK_MONOTONIC, &accEnd);
     const double accTime_ms = time_diff_ms(accStart, accEnd);
 
+//COMPUTE DOT PRODUCT ON HOST
     timespec hostStart = {0, 0};
     timespec hostEnd = {0, 0};
     clock_gettime(CLOCK_MONOTONIC, &hostStart);
     hostDot = host_dot_product(V1, V2);
     clock_gettime(CLOCK_MONOTONIC, &hostEnd);
     const double host_time = time_diff_ms(hostStart, hostEnd);
-
+//PRINT RESULTS
     std::cout << deviceDot << ' ' << hostDot << std::endl;
 
     if(check_result(hostDot, deviceDot, EPS)) {
-        std::cout << "PASSED " << (accTime_ms + kernelElapsedTime_ms) << "ms" << std::endl;
+        std::cout << "PASSED: " << (accTime_ms + kernelElapsedTime_ms) 
+                  << "ms" << std::endl;
         std::cout << "       " << host_time << "ms" << std::endl;
-        std::cout << "Transfer time " << dataTransferTime_ms << "ms" << std::endl;
+        std::cout << "Transfer time " << dataTransferTime_ms 
+                  << "ms" << std::endl;
     } else {
         std::cout << "FAILED" << std::endl;
     }   
