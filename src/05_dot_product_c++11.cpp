@@ -1,7 +1,10 @@
-#ifdef PARALLEL_
+//Author: Ugo Varetto
+//dot product with C++11: faster than OpenCL! and OpenMP on SandyBridge Xeons
+//with g++4.8.1 -lrt -std=c++
+//a.out 268435456 128 (256 Mi doubles, 128 threads!)
+
 #if __cplusplus < 201103L
 #error "C++ 11 required"
-#endif
 #endif
 
 #include <thread>
@@ -11,6 +14,7 @@
 #include <ctime>
 #include <numeric>
 #include <cassert>
+#include <vector>
 
 typedef double real_t;
 
@@ -20,48 +24,67 @@ real_t time_diff_ms(const timespec& start, const timespec& end) {
            - (start.tv_sec * 1E3 + start.tv_nsec / 1E6);  
 }
 
-#ifdef PARALLEL_
+//------------------------------------------------------------------------------
+real_t dotblock(const real_t* x, const real_t* y, int N, int block) {
+    std::vector< real_t > b1(block);
+    std::vector< real_t > b2(block);
+    real_t d = real_t(0);
+    for(int b = 0; b < N; b += block) {
+        std::copy(x + b, x + b + block, b1.begin());
+        std::copy(y + b, y + b + block, b2.begin());
+        d += std::inner_product(b1.begin(), b1.end(), b2.begin(), real_t(0));
+    }
+    return d;
+}
+
+//------------------------------------------------------------------------------
 real_t dot(int N, const real_t* X, const real_t* Y, int nt) {
-    std::vector< std::future< real_t > > futures(nt);
-    for(int i = 0; i != nt - 1; ++i) {
-        futures.push_back(std::async([nt, X, Y, N](int i) {
-            return std::inner_product(X + i * N / nt, X + i * N/ nt + N / nt, Y, real_t(0));  
-        },i));  
+    std::vector< std::future< real_t > > futures;
+    for(int i = 0; i < (nt - 1); ++i) {
+        futures.push_back(
+            std::async(std::launch::async, [nt, X, Y, N](int off) {
+                //return dotblock(X + off, Y + off, N / nt, 16384); 
+                return std::inner_product(X + off, X + off + N / nt,
+                                          Y + off, real_t(0));  
+        }, i * (N / nt)));  
     }
     futures.push_back(std::async([nt, X, Y, N]() {
       const int n =  N / nt + N % nt; 
-      return std::inner_product(X + (nt-1) * N / nt, X + (nt-1) * N/ nt + n, Y, real_t(0));  
+      const int off = (nt-1) * (N / nt);
+      return std::inner_product(X + off, X + off + n, Y + off, real_t(0));
+      //return dotblock(X + off, Y + off, N / nt, 16384);  
     }));
     real_t d = real_t(0); 
     std::for_each(futures.begin(), futures.end(),
-                    [&d](std::future< real_t >& f) {
+                    [&d](std::future< real_t >& f) {                   
                         d += f.get();  
                     });
+
     return d;
 }
-#else
-real_t dot(int N, const real_t* X, const real_t* Y) {
-    return std::inner_product(X, X + N, Y, real_t(0));
-}
-#endif 
 
 //------------------------------------------------------------------------------
-int main (int, char** argv) {
-  const int n = 1024*256; 
-  double a[n], b[n];
-  double result = 0;
-  for(int i = 0; i < n; i++) {
-      a[i] = i * 1.0;
-      b[i] = i * 2.0;
-      result += a[i] * b[i];
+int main (int argc, char** argv) {
+  if(argc < 3 || atoi(argv[1]) < 1 || atoi(argv[2]) < 1) {
+      std::cout << "usage: " << argv[0] 
+                << " <size> <number of threads>" << std::endl;
+      return 0;
   }
+  const int N = atoi(argv[1]);//e.g. 1024 * 1024 * 256;
+  std::vector< real_t > a(N);
+  std::vector< real_t > b(N);
+  std::default_random_engine rng(std::random_device{}()); 
+  std::uniform_real_distribution< real_t > dist(1, 2);
+  std::generate(a.begin(), a.end(), [&dist, &rng]{return dist(rng);});
+  std::generate(b.begin(), b.end(), [&dist, &rng]{return dist(rng);});
+  const real_t result = 
+    std::inner_product(a.begin(), a.end(), b.begin(), real_t(0));
   timespec s, e;
   clock_gettime(CLOCK_MONOTONIC, &s);
-#ifdef PARALLEL_  
-  assert(dot(n, a, b, atoi(argv[1])) == result);
-#else
-  assert(dot(n, a, b) == result);
-#endif
+  if(dot(N, &a[0], &b[0], atoi(argv[2])) != result)
+      std::cerr << "ERROR" << std::endl;
+  else
+      std::cout << "PASSED" << std::endl;
   clock_gettime(CLOCK_MONOTONIC, &e);
   std::cout << "Time: " << time_diff_ms(s, e) << "ms" << std::endl;
   return 0;
