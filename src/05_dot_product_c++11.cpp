@@ -1,7 +1,7 @@
 //Author: Ugo Varetto
 //dot product with C++11: faster than OpenCL! and OpenMP on SandyBridge Xeons
 //with g++4.8.1 -lrt -std=c++
-//a.out 268435456 128 (256 Mi doubles, 128 threads!)
+//a.out 268435456 64 (256 Mi doubles, 64 threads!)
 
 #if __cplusplus < 201103L
 #error "C++ 11 required"
@@ -17,6 +17,7 @@
 #include <vector>
 
 typedef double real_t;
+const double EPS = 0.00000001;
 
 //------------------------------------------------------------------------------
 real_t time_diff_ms(const timespec& start, const timespec& end) {
@@ -81,8 +82,11 @@ int main (int argc, char** argv) {
     std::inner_product(a.begin(), a.end(), b.begin(), real_t(0));
   timespec s, e;
   clock_gettime(CLOCK_MONOTONIC, &s);
-  if(dot(N, &a[0], &b[0], atoi(argv[2])) != result)
-      std::cerr << "ERROR" << std::endl;
+  const real_t dotres = dot(N, &a[0], &b[0], atoi(argv[2]));
+
+  if(std::abs(dotres - result > EPS))
+      std::cerr << "ERROR: " << "got " << dotres << " instead of " 
+                << result << " difference = " << (dotres - result) << std::endl;
   else
       std::cout << "PASSED" << std::endl;
   clock_gettime(CLOCK_MONOTONIC, &e);
