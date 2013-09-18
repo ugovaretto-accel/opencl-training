@@ -251,7 +251,7 @@ int main(int argc, char** argv) {
     timespec hostStart = {0, 0};
     timespec hostEnd = {0, 0};
     clock_gettime(CLOCK_MONOTONIC, &hostStart);
-    if(SIZE % CPU_BLOCK_SIZE != 0) hostDot = host_dot_product(V1, V2);
+    if(true || SIZE % CPU_BLOCK_SIZE != 0) hostDot = host_dot_product(V1, V2);
     else hostDot = host_dot_block(&V1[0], &V2[0], SIZE, CPU_BLOCK_SIZE);
     clock_gettime(CLOCK_MONOTONIC, &hostEnd);
     const double host_time = time_diff_ms(hostStart, hostEnd);
@@ -266,7 +266,7 @@ int main(int argc, char** argv) {
                   << "ms" << std::endl;
         std::cout << "transfer:       " << dataTransferTime_ms 
                   << "ms\n" << std::endl;
-        if(SIZE % CPU_BLOCK_SIZE != 0) {         
+        if(true || SIZE % CPU_BLOCK_SIZE != 0) {         
             std::cout << "host:              " << host_time << "ms" << std::endl;
         } else {
             std::cout << "host (16k blocks): " << host_time << "ms" << std::endl; 
