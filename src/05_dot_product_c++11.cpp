@@ -17,7 +17,7 @@
 #include <vector>
 
 typedef double real_t;
-const double EPS = 0.00000001;
+const double EPS = 1E-9;
 
 //------------------------------------------------------------------------------
 real_t time_diff_ms(const timespec& start, const timespec& end) {
