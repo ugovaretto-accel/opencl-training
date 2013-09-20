@@ -152,15 +152,18 @@ real_t dot(int N, const real_t* X, const real_t* Y, int nt,
 //------------------------------------------------------------------------------
 int main (int argc, char** argv) {
 
-    if(argc < 3 || atoi(argv[1]) < 1 || atoi(argv[2]) < 1) {
-        std::cout << "usage: " << argv[0] 
-                  << " <size> <number of threads>"
+  if(argc < 3 || atoi(argv[1]) < 1 || atoi(argv[2]) < 1) {
+      std::cout << "usage: " << argv[0] 
+                << " <size> <number of threads>"
 #ifndef BLOCK     
-                  << " [block size, default = 16384]"               
+                << " [block size, default = 16384]"               
 #endif
-                  << std::endl;
-        return 0;
-    }
+                << std::endl;
+      return 0;
+  }
+  
+  std::cout << std::thread::hardware_concurrency() 
+            << " concurrent threads are supported.\n\n";
 
   const int N = atoi(argv[1]);//e.g. 1024 * 1024 * 256;
   int blocksize = 16384;
@@ -173,7 +176,7 @@ int main (int argc, char** argv) {
   }
   if(N % 4 != 0) {
       std::cout << "Invalid input:\n"
-                "\tsize must be evenly divisible by 4 When compiled"
+                "\tsize must be evenly divisible by 4 When compiled "
                 "with -DUSE_AVX"
                 << std::endl;
       return 0;
