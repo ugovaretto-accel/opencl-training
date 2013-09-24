@@ -1,6 +1,6 @@
 //Author: Ugo Varetto
 //dot product with C++11: faster than OpenCL! on SandyBridge Xeons
-//with g++4.8.1 -std=c++ -O3 -lpthread
+//with g++4.8.1 -std=c++ -O3 -pthread
 //-DBLOCK enables block dot version (slower!),
 //-DUSE_AVX enables block+avx(fastest)
 //enable avx as needed by adding -mavx2 when -DUSE_AVX defined
