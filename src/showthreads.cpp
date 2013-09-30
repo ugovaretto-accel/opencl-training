@@ -23,6 +23,8 @@
 #include <future>
 #include <algorithm>
 #include <iterator>
+#include <unistd.h>
+
 
 //------------------------------------------------------------------------------
 std::string threadreport() {
