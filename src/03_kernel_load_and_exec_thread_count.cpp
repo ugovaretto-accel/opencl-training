@@ -1,10 +1,11 @@
 //Load and execute a simple kernel which sets each array element to a specific
-//value
+//value; thread count is retrieved, saved and printed at the end
+//if compiled with openmp support it also generate additional threads from
+//openmp
 //Author: Ugo Varetto
 //Launch as e.g.:
 // ./03 "AMD Accelerated Parallel Processing" default 0 \
 //       src/kernels/03_kernel.cl arrayset
-//Also try with 03_kernel_wrong.cl to see error output from OpenCL compiler 
 
 #include <iostream>
 #include <sstream>
@@ -21,7 +22,10 @@
 #else
 #include <CL/cl.h>
 #endif
-
+#ifdef _OPENMP
+#error "OPENMP!"
+#include <omp.h>
+#endif
 //------------------------------------------------------------------------------
 struct ThreadCountRecord {
     std::string msg;
@@ -212,12 +216,37 @@ int main(int argc, char** argv) {
     int deviceNum = atoi(argv[3]);
 
     log_thread_count("\n\nstart");
+#ifdef _OPENMP    
+    {
+        // const int CHUNKSIZE = 100;
+        // const int N = 1000;    
+        // int i, chunk;
+        // float a[N], b[N], c[N];
+        // for (i=0; i < N; i++)
+        //     a[i] = b[i] = i * 1.0;
+        // chunk = CHUNKSIZE;
+        // printf("%d", omp_get_max_threads());
+        #pragma omp parallel //shared(a,b,c,chunk) private(i)
+        {
+            if(omp_get_thread_num() == 0) {
+                log_thread_count("OMP PARALLEL");
+            }
+        // printf("%d", omp_get_max_threads());
+        // #pragma omp for schedule(dynamic,chunk) nowait
+        // for (i=0; i < N; i++) {
+        //     c[i] = a[i] + b[i];
+        // }
+        }  
+        #pragma omp barrier
+    }
+#endif    
 
     //1)create context
     cl_context ctx = create_cl_context(platformName, deviceType, deviceNum);
     std::cout << "OpenCL context created" << std::endl;
     
     log_thread_count("CL context created");
+
 
     //2)load kernel source
     const std::string programSource = load_text(argv[4]);
