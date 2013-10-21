@@ -7,7 +7,9 @@
 //g++ ../src/12_scratch.cpp \
 // -I/usr/local/glfw/include \
 // -DGL_GLEXT_PROTOTYPES -L/usr/local/glfw/lib -lglfw \
-// -I/usr/local/glm/include
+// -I/usr/local/glm/include \
+// -lGL
+
 
 #include <GLFW/glfw3.h>
 
@@ -205,8 +207,7 @@ int main(int argc, char** argv) {
     glGenTextures(1, &tex);
 
     glBindTexture(GL_TEXTURE_2D, tex);
-    const char imagepath[] = "img.tga";
-
+   
     glTexImage2D(GL_TEXTURE_2D,
                  0,
                  GL_RED,
