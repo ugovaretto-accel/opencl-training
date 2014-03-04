@@ -26,7 +26,7 @@ int main( int argc, char** argv ) {
         MPI_Finalize();
         return -1;
     }
-    error=clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 1, &device, &devices);
+    error=clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device, &devices);
     if(error != CL_SUCCESS) {
         printf("Process %d: Error number %d\n", rank, error);
         MPI_Finalize();
