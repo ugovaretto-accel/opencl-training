@@ -185,7 +185,8 @@ int main(int argc, char** argv) {
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
 
-    // create texture 
+    // create texture: single floating point component set 
+    // to 0.5 (grey color, 1 is white, 0 is black)
     std::vector< float > tc(SIZE * SIZE, 0.5f);
     GLuint tex;
     glGenTextures(1, &tex);
