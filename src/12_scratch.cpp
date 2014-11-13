@@ -6,10 +6,20 @@
 
 //g++ ../src/12_scratch.cpp \
 // -I/usr/local/glfw/include \
+// -DGLM_FORCE_RADIANS
 // -DGL_GLEXT_PROTOTYPES -L/usr/local/glfw/lib -lglfw \
 // -I/usr/local/glm/include \
 // -lGL
+//clang++ -DGL_GLEXT_PROTOTYPES \
+//-L /opt/local/lib -lglfw \
+//-I /opt/local/include \
+//-framework OpenGL 
+//-DGLM_FORCE_RADIANS 12_scratch.cpp
 
+//the following will cause both gl and gl3 to be included
+#ifdef __APPLE__
+#include <OpenGL/gl3.h>
+#endif
 
 #include <GLFW/glfw3.h>
 
@@ -108,7 +118,7 @@ void key_callback(GLFWwindow* window, int key,
 const char fragmentShaderSrc[] =
     "#version 330 core\n"
     "smooth in vec2 UV;\n"
-    "smooth out vec3 outColor;\n"
+    "out vec3 outColor;\n"
     "uniform sampler2D cltexture;\n"
     "void main() {\n"
     "  outColor = texture(cltexture, UV).rrr;\n"
@@ -147,6 +157,12 @@ int main(int argc, char** argv) {
     // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__    
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif        
 
     GLFWwindow* window = glfwCreateWindow(640, 480,
                                           "OpenCL-GL interop", NULL, NULL);
@@ -184,7 +200,14 @@ int main(int argc, char** argv) {
                          1.0f, 0.0f,
                          1.0f, 0.0f,
                          1.0f, 1.0f,
-                         0.0f, 1.0f};                 
+                         0.0f, 1.0f};   
+    //OpenGL >= 3.3 core requires a vertex array object containing multiple attribute
+    //buffers                      
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao); 
+
+    //geometry buffer
     GLuint quadvbo;  
     glGenBuffers(1, &quadvbo);
     glBindBuffer(GL_ARRAY_BUFFER, quadvbo);
@@ -193,13 +216,16 @@ int main(int argc, char** argv) {
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+    //texture coordinate buffer
     GLuint texbo;  
     glGenBuffers(1, &texbo);
+
     glBindBuffer(GL_ARRAY_BUFFER, texbo);
     glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(real_t),
                  &texcoord[0], GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
+    glBindVertexArray(0); 
 
     // create texture 
     std::vector< float > tc(SIZE * SIZE, 0.5f);
@@ -217,7 +243,7 @@ int main(int argc, char** argv) {
                  GL_RED,
                  GL_FLOAT,
                  &tc[0]);
-   
+  
     //optional
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -237,8 +263,10 @@ int main(int argc, char** argv) {
 
     //extract ids of shader variables
     GLint mvpID = glGetUniformLocation(glprogram, "MVP");
+    assert(mvpID>=0);
 
     GLint textureID = glGetUniformLocation(glprogram, "cltexture");
+    assert(textureID>=0);
 
     
     //only need texture unit 0
@@ -247,49 +275,60 @@ int main(int argc, char** argv) {
     glUniform1i(textureID, 0);
 
     //beckground color        
-    glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
+    glClearColor(0.0f, 0.0f, 0.4f, 1.0f);
 
 //RENDER LOOP    
     //rendering & simulation loop
-    while (!glfwWindowShouldClose(window)) {     
+    while (true) {//!glfwWindowShouldClose(window)) {     
         glClear(GL_COLOR_BUFFER_BIT);
-
         //setup OpenGL matrices: no more matrix stack in OpenGL >= 3 core
-        //profile, need to compute modelview and projection matrix manually
-        // Clear the screen    
+        //profile, need to co// Clear the screen    
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
+        assert(width > 0 && height > 0);
         const float ratio = width / float(height);
         const glm::mat4 orthoProj = glm::ortho(-ratio, ratio,
                                                -1.0f,  1.0f,
                                                 1.0f,  -1.0f);
         const glm::mat4 modelView = glm::mat4(1.0f);
         const glm::mat4 MVP        = orthoProj * modelView;
+        
         glViewport(0, 0, width, height);
 
         glUniformMatrix4fv(mvpID, 1, GL_FALSE, glm::value_ptr(MVP));
-      
-   
+  
+        glBindVertexArray(vao); 
         //standard OpenGL core profile rendering
-        glEnableVertexAttribArray(0);
+        //glEnableVertexAttribArray(0);std::cout << glGetError() << std::endl;
+  
 
         glBindBuffer(GL_ARRAY_BUFFER, quadvbo);
 
         glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
-
-        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(0);
+        
+ 
+        //glEnableVertexAttribArray(1);
         glBindBuffer(GL_ARRAY_BUFFER, texbo);
+        
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(1);
+
         glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0); 
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
+        
         glfwSwapBuffers(window);
         glfwPollEvents();
+       
     }
 
 //CLEANUP
     glDeleteBuffers(1, &quadvbo);
     glDeleteBuffers(1, &texbo);
+    glDeleteVertexArrays(1, &vao);
     glDeleteTextures(1, &tex);
     glfwDestroyWindow(window);
 
