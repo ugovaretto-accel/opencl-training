@@ -16,7 +16,6 @@
 //-framework OpenGL 
 //-DGLM_FORCE_RADIANS 12_scratch.cpp
 
-//the following will cause both gl and gl3 to be included
 #ifdef __APPLE__
 #include <OpenGL/gl3.h>
 #endif
@@ -165,7 +164,7 @@ int main(int argc, char** argv) {
 #endif        
 
     GLFWwindow* window = glfwCreateWindow(640, 480,
-                                          "OpenCL-GL interop", NULL, NULL);
+                                          "GL 3.3 core", NULL, NULL);
     if (!window) {
         std::cerr << "ERROR - glfwCreateWindow" << std::endl;
         glfwTerminate();
@@ -213,6 +212,7 @@ int main(int argc, char** argv) {
     glBindBuffer(GL_ARRAY_BUFFER, quadvbo);
     glBufferData(GL_ARRAY_BUFFER, 6 * 4 * sizeof(float),
                  &quad[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -223,6 +223,7 @@ int main(int argc, char** argv) {
     glBindBuffer(GL_ARRAY_BUFFER, texbo);
     glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(real_t),
                  &texcoord[0], GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
     glBindVertexArray(0); 
@@ -268,7 +269,6 @@ int main(int argc, char** argv) {
     GLint textureID = glGetUniformLocation(glprogram, "cltexture");
     assert(textureID>=0);
 
-    
     //only need texture unit 0
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
@@ -297,32 +297,20 @@ int main(int argc, char** argv) {
 
         glUniformMatrix4fv(mvpID, 1, GL_FALSE, glm::value_ptr(MVP));
   
+        //select geometry to render
         glBindVertexArray(vao); 
-        //standard OpenGL core profile rendering
-        //glEnableVertexAttribArray(0);std::cout << glGetError() << std::endl;
-  
-
-        glBindBuffer(GL_ARRAY_BUFFER, quadvbo);
-
-        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
         glEnableVertexAttribArray(0);
-        
- 
-        //glEnableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, texbo);
-        
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
         glEnableVertexAttribArray(1);
-
+        //draw
         glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        //unbind
         glBindVertexArray(0); 
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
-        
+        //put pixels on screen
         glfwSwapBuffers(window);
-        glfwPollEvents();
-       
+        //query events
+        glfwPollEvents();       
     }
 
 //CLEANUP
@@ -331,7 +319,6 @@ int main(int argc, char** argv) {
     glDeleteVertexArrays(1, &vao);
     glDeleteTextures(1, &tex);
     glfwDestroyWindow(window);
-
     glfwTerminate();
     exit(EXIT_SUCCESS);
     return 0;
