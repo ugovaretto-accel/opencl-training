@@ -185,8 +185,7 @@ int main(int argc, char** argv) {
 
 
 //GEOMETRY
-    //geometry: textured quad; the texture color is conputed by
-    //OpenCL
+    //geometry: textured quad
     float quad[] = {-1.0f,  1.0f, 0.0f, 1.0f,
                     -1.0f, -1.0f, 0.0f, 1.0f,
                      1.0f, -1.0f, 0.0f, 1.0f,
