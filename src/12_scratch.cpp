@@ -4,17 +4,7 @@
 //Requires GLFW and GLM, to deal with the missing support for matrix stack
 //in OpenGL >= 3.3
 
-//g++ ../src/12_scratch.cpp \
-// -I/usr/local/glfw/include \
-// -DGLM_FORCE_RADIANS
-// -DGL_GLEXT_PROTOTYPES -L/usr/local/glfw/lib -lglfw \
-// -I/usr/local/glm/include \
-// -lGL
-//clang++ -DGL_GLEXT_PROTOTYPES \
-//-L /opt/local/lib -lglfw \
-//-I /opt/local/include \
-//-framework OpenGL 
-//-DGLM_FORCE_RADIANS 12_scratch.cpp
+//clang++ 12_scratch.cpp -L/opt/local/lib -lglfw -I/usr/local/glm/include  -I /opt/local/include -framework OpenGL -DGLM_FORCE_RADIANS -DGL_GLEXT_PROTOTYPES
 
 #ifdef __APPLE__
 #include <OpenGL/gl3.h>
@@ -157,8 +147,8 @@ int main(int argc, char** argv) {
     // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__    
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif        
