@@ -185,7 +185,7 @@ void print_platforms() {
         i != platforms.end(); ++i, ++p) {
         
         std::cout << "\n-----------\n"; 
-        std::cout << "Platform " << p << std::endl;
+        std::cout << "Platform " << p << " " << *i << std::endl;
         std::cout << "-----------\n";  
         status = ::clGetPlatformInfo(*i, CL_PLATFORM_VENDOR,
                                      buf.size(), &buf[ 0 ], 0 );

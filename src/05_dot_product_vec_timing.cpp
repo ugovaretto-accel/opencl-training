@@ -108,12 +108,16 @@ int main(int argc, char** argv) {
     const int CL_ELEMENT_SIZE = atoi(argv[argc - 1]); // number of per-element
                                                       // components
     const int CPU_BLOCK_SIZE = 16384; //use block dot product if SIZE divisible
-                                  //by this value
+                                      //by this value
     const size_t BYTE_SIZE = SIZE * sizeof(real_t);
     const int BLOCK_SIZE = atoi(argv[argc - 2]); //local cache for reduction
                                                  //equal to local workgroup size
     const int REDUCED_SIZE = SIZE / BLOCK_SIZE;
     const int REDUCED_BYTE_SIZE = REDUCED_SIZE * sizeof(real_t);
+    
+    std::cout << "Size:          " << SIZE << std::endl
+              << "Local size:    " << BLOCK_SIZE << std::endl
+              << "Element width: " << CL_ELEMENT_SIZE << std::endl;
     //setup text header that will be prefixed to opencl code
     std::ostringstream clheaderStream;
     clheaderStream << "#define BLOCK_SIZE " << BLOCK_SIZE      << '\n';
