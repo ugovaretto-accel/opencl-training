@@ -100,7 +100,8 @@ int main(int argc, char** argv) {
         std::cerr << "usage: " << argv[0]
                   << " <platform name> <device type = default | cpu | gpu "
                      "| acc | all>  <device num> <OpenCL source file path>"
-                     " <kernel name> <size> <local size> <vec element width>"
+                     " <kernel name> <size> <local OpenCL memory block size>"
+                     "<vec element width>"
                   << std::endl;
         exit(EXIT_FAILURE);   
     }
@@ -111,6 +112,7 @@ int main(int argc, char** argv) {
                                       //by this value
     const size_t BYTE_SIZE = SIZE * sizeof(real_t);
     const int BLOCK_SIZE = atoi(argv[argc - 2]); //local cache for reduction
+                                                 //in OpenCL kernel
                                                  //equal to local workgroup size
     const int REDUCED_SIZE = SIZE / BLOCK_SIZE;
     const int REDUCED_BYTE_SIZE = REDUCED_SIZE * sizeof(real_t);

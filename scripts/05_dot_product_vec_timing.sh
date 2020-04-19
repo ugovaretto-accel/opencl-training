@@ -5,8 +5,9 @@
 platform="AMD Accelerated Parallel Processing"
 #platform="Portable Computing Language"
 device_id="0"
-type="default"
-size=$((16384 * 1024))
+type="gpu"
+size=$(((2**19) * 1024))
+echo "size: $size"
 local_size=256
 vec_element_width=1
 ./05_dot_product_vec_timing "$platform" \
@@ -50,7 +51,14 @@ $vec_element_width
 #  Global memory: 6425673728 bytes
 #  Local memory: 65536 bytes
 
-
+#All results double precision on a < AUD 500 RX 5600 XT card
+#Peak power consumption 18W:
+# ========================ROCm System Management Interface======================
+# ==============================================================================
+# GPU  Temp   AvgPwr  SCLK    MCLK    Fan   Perf  PwrCap  VRAM%  GPU%  
+# 0    37.0c  9.0W    800Mhz  100Mhz  0.0%  auto  150.0W    0%   0%    
+# 1    43.0c  18.0W   800Mhz  100Mhz  0.0%  auto  150.0W    8%   0%    
+# ==============================================================================
 
 ############################
 # AMD GPU:
@@ -88,6 +96,36 @@ $vec_element_width
 #
 #host:              147.032ms
 
+
+###########################
+# AMD GPU w/ pthread! 2GB arrayes
+#size: 268435456
+#Size:          268435456
+#Local size:    256
+#Element width: 1
+#5.43562e+09 5.43562e+09
+#PASSED
+#kernel:         32.1953ms
+#host reduction: 6.54658ms
+#total:          38.7418ms
+#transfer:       1.94638ms
+#
+#host:              2323.27ms
+
+###########################
+# AMD GPU w/ pthread! 4GB arrayes
+# size: 536870912
+# Size:          536870912
+# Local size:    256
+# Element width: 1
+# 1.08715e+10 1.08715e+10
+# PASSED
+# kernel:         151.873ms
+# host reduction: 13.3555ms
+# total:          165.229ms
+# transfer:       2.08787ms
+
+# host:              4582.05ms
 
 
 

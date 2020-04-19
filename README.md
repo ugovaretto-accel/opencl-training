@@ -1,5 +1,4 @@
-OpenCL sample code
-==================
+## OpenCL sample code
 
 OpenCL sample code to be used in various OpenCL training classes.
 
@@ -11,3 +10,5 @@ Hardware targets are:
  - NVIDIA Kepler GPUs
  - AMD 79xx
  - Intel Xeon Phi
+
+__Update April 2020__: porting to OpenCL 2.x/POCL
