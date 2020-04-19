@@ -13,3 +13,4 @@
 *.a
 
 tmp*
+.vscode
