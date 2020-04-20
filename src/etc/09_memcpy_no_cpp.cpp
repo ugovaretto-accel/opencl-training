@@ -1,210 +1,372 @@
-//Memcopy example w/ bandwidth tests.
-//Author: Ugo Varetto
-//Note: page-locked memory transfers might not work properly on systems
-//sharing the same memory for both host and device (e.g. CPU)
-
-#include <cassert>
+// Memcopy example w/ bandwidth tests. Author: Ugo Varetto Note: page-locked
+// memory transfers might not work properly on systems sharing the same memory
+// for both host and device (e.g. CPU), does work on POCL
+// g++ ../src/clutil.cpp ../src/etc/09_memcpy_bw_test.cpp -I ../src/ -lOpenCL \
+//-o 09_memcpy -DCL_TARGET_OPENCL_VERSION=110
+#include <algorithm>
 #include <cstdlib>
-#include <fstream>
+#include <cstring>
 #include <iostream>
 #include <iterator>
 #include <stdexcept>
-#include <ctime>
-#include <cstring>
 #include <vector>
 
 #include "clutil.h"
 
-typedef double real_t;
-
-typedef std::vector< real_t > ByteArray;
-
 using namespace std;
-//------------------------------------------------------------------------------
-double time_diff_ms(const timespec& start, const timespec& end) {
-    return end.tv_sec * 1E3 +  end.tv_nsec / double(1E6)
-           - (start.tv_sec * 1E3 + start.tv_nsec / double(1E6));  
-}
 
+typedef vector<uint8_t> ByteArray;
 
 //------------------------------------------------------------------------------
-double copy_host_to_device_page_locked(const ByteArray& data,
-                                       const CLEnv &clenv) {
-
-    cl_int status = 0;
-    //have OpenCL allocate a page-locked buffer with CL_MEM_ALLOC_HOST_PTR
-    cl_mem buffer = clCreateBuffer(clenv.context,
-                                   CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
-                                   sizeof(real_t) * data.size(), 0, &status);
-
-    check_cl_error(status, "clCreateBuffer");
-    cl_event mapEvent;
-    cl_event unmapEvent;
-    // timespec tStart = {0,  0};
-    // timespec tEnd = {0, 0};
-    //clock_gettime(CLOCK_MONOTONIC, &tStart);
-    //map buffer to host memory: this might trigger a device-host transfer;
-    //in this case since no host data was transfered to the CL buffer, no
-    //device --> host transfer should occur
-    clFinish(clenv.commandQueue);
-    void *hostPtr = clEnqueueMapBuffer(
-        clenv.commandQueue,
-        buffer,
-        CL_TRUE,
-        CL_MAP_WRITE,
-        0,
-        sizeof(real_t) * data.size(),
-        0,
-        0,
-        0,
-        &status);
-    //std::vector<uint8_t> b(size);
-    check_cl_error(status, "clEnqueueMapBuffer");
-    check_cl_error(clWaitForEvents(1, &mapEvent), "clWaitForEvent");
-    cl_ulong start = 0;
-    size_t retSize = 0;
-    status = clGetEventProfilingInfo(unmapEvent,
-                                     CL_PROFILING_COMMAND_START,
-                                     sizeof(cl_ulong),
-                                     &start,
-                                     &retSize);
-    cl_ulong end = 0;
-    status = clGetEventProfilingInfo(unmapEvent,
-                                     CL_PROFILING_COMMAND_END,
-                                     sizeof(cl_ulong),
-                                     &end,
-                                     &retSize);                                
-    
-    //memcpy(hostPtr, &b[0], b.size());
-    //the unmap function is what triggers the actual host --> device memory
-    //transfer to keep host and device memory in sync; note that if both
-    //host and device do use the same memory space the timings might be
-    //meaningless and represent only the latency of the C function call itself
-    status = clEnqueueUnmapMemObject(clenv.commandQueue,
-                                     buffer,
-                                     hostPtr,
-                                     1,
-                                     &mapEvent,
-                                     &unmapEvent);
-    check_cl_error(status, "clEnqueueUnmapMemObject");
-    return double(end - start);
-
-
-    // status = clFinish(clenv.commandQueue);
-    // check_cl_error(status, "clFinish");
-    // status = clWaitForEvents(1, &unmapEvent);
-    // clock_gettime(CLOCK_MONOTONIC, &tEnd);
-    // check_cl_error(status, "clWaitForEvents");
-    // return time_diff_ms(tStart, tEnd);
-    // status = clGetEventProfilingInfo(unmapEvent,
-    //                                  CL_PROFILING_COMMAND_START,
-    //                                  sizeof(cl_ulong),
-    //                                  &start,
-    //                                  &retSize);
-    // check_cl_error(status, "clGetEventProfilingInfo");
-    // cl_ulong end = 0;
-    // status = clGetEventProfilingInfo(unmapEvent,
-    //                                  CL_PROFILING_COMMAND_END,
-    //                                  sizeof(cl_ulong),
-    //                                  &end,
-    //                                  &retSize);
-
-    // return double(end - start);
+double profile_time_s(cl_event event) {
+    cl_ulong tstart = 0;
+    cl_ulong tend = 0;
+    cl_int ret = clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START,
+                                         sizeof(cl_ulong), &tstart, 0);
+    check_cl_error(ret, "clGetEventProfilingInfo");
+    ret = clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END,
+                                  sizeof(cl_ulong), &tend, 0);
+    check_cl_error(ret, "clGetEventProfilingInfo");
+    return (tend - tstart) / 1E9;
 }
 
 //------------------------------------------------------------------------------
-// double copy_device_to_host_page_locked(const CLEnv& clenv,
-//                                        const cl::Context &context,
-//                                        cl::CommandQueue &queue) {
+double copy_host_to_device(cl_context context, cl_command_queue commandQueue,
+                           size_t size, bool mapped, bool pinned) {
+    cl_int status = -1;
+    uint8_t *hostMem = nullptr;
+    cl_mem hostPinnedMem = nullptr;
+    cl_mem deviceMem = nullptr;
+    cl_event profileEvent;
+    // Allocate host memory
+    if (pinned) {
+        // Create a host buffer
+        hostPinnedMem =
+            clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR,
+                           size, 0, &status);
+        check_cl_error(status, to_string(__LINE__).c_str());
 
-//     cl_int status = -1;
-//     //have OpenCL allocate a page-locked buffer with CL_MEM_ALLOC_HOST_PTR
-//     cl_mem buffer = clCreateBuffer(clenv.context,
-//                                    CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
-//                                    size, 0, &status);
-//     cl_event profileEvent;
-//     //map buffer to host memory: this might trigger a device-host transfer;
-//     //in this case since no host data was transfered to the CL buffer, no
-//     //device --> host transfer should occur
-//     void *hostPtr = clEnqueueMapBuffer(
-//         clenv.commandQueue,
-//         buffer,
-//         CL_TRUE,
-//         CL_MAP_WRITE,
-//         0,
-//         size,
-//         0,
-//         0,
-//         0,
-//         &status
-//     );
+        // Get a mapped pointer to page locked memeory
+        hostMem = (uint8_t *)clEnqueueMapBuffer(commandQueue, hostPinnedMem,
+                                                CL_FALSE, CL_MAP_WRITE, 0, size,
+                                                0, nullptr, nullptr, &status);
+        check_cl_error(status, to_string(__LINE__).c_str());
 
-//     cl_int status = -1;
-//     //have OpenCL allocate a page-locked buffer with CL_MEM_ALLOC_HOST_PTR
-//     cl_mem buffer = clCreateBuffer(clenv.context,
-//                                    CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
-//                                    size, 0, &status);
-//     cl::Buffer buffer(context,
-//                       CL_MEM_READ_ONLY | CL_MEM_ALLOC_HOST_PTR,
-//                       data.size(), 0);
-//     cl::Event profileEvent;
-//     queue.finish();
+        // initialize
+        for (int i = 0; i != size; ++i) {
+            hostMem[i] = (uint8_t)i;
+        }
 
-//     //actual data transfer operations do happen at map/unmap time
+        // unmap: disconnect host pointer from page locked memory,
+        // to access memory from host map again
+        status = clEnqueueUnmapMemObject(commandQueue, hostPinnedMem,
+                                         (void *)hostMem, 0, nullptr, nullptr);
+        check_cl_error(status, to_string(__LINE__).c_str());
+        hostMem = nullptr;  // buffer unmapped set to null
+    } else {
+        // host allocation
+        hostMem = (uint8_t *)malloc(size);
 
-//     //in order to force an actual device --> host transfer we need to somehow
-//     //"touch" the device memory by first enqueueing a host --> device
-//     //transfer through unmap; not doing this might not trigger a
-//     //device --> host transfer when mapping memory
+        // initialize
+        for (unsigned int i = 0; i != size; i++) {
+            hostMem[i] = (uint8_t)i;
+        }
+    }
 
-//     //dummy host --> device transfer - not timed
-//     void *hostPtr = queue.enqueueMapBuffer(buffer,
-//                                            CL_TRUE,
-//                                            CL_MAP_WRITE,
-//                                            0,
-//                                            data.size(),
-//                                            0,
-//                                            0);
-//     queue.enqueueUnmapMemObject(buffer, hostPtr, 0, 0);
-//     //device to host transfer
-//     hostPtr = queue.enqueueMapBuffer(buffer,
-//                                      CL_TRUE,
-//                                      CL_MAP_WRITE,
-//                                      0,
-//                                      data.size(),
-//                                      0,
-//                                      &profileEvent);
-//     queue.enqueueUnmapMemObject(buffer, hostPtr, 0, 0);
-//     if (hostPtr == 0)
-//         throw std::runtime_error("ERROR - NULL host pointer");
+    // allocate device memory
+    deviceMem = clCreateBuffer(context, CL_MEM_READ_ONLY, size, 0, &status);
+    check_cl_error(status, to_string(__LINE__).c_str());
 
-//     // Configure event processing
-//     const cl_ulong start = profileEvent
-//                                .getProfilingInfo<CL_PROFILING_COMMAND_START>();
-//     const cl_ulong end = profileEvent
-//                              .getProfilingInfo<CL_PROFILING_COMMAND_END>();
-//     return double(end - start) / 1E6;
-// }
+    // sync queue
+    clFinish(commandQueue);
 
-//------------------------------------------------------------------------------
-double GBs(size_t sizeInBytes, double timeInSeconds) {
-    return (double(sizeInBytes) / 0x40000000) / timeInSeconds;
+    if (!mapped) {
+        if (pinned) {
+            // map again page locked memory to accessible host pointer
+            // cl_event pe;
+            hostMem = (uint8_t *)clEnqueueMapBuffer(
+                commandQueue, hostPinnedMem, CL_FALSE, CL_MAP_READ, 0, size, 0,
+                nullptr, nullptr /*&pe*/, &status);
+            // clWaitForEvents(1, &pe);
+            // cout << profile_time_s(pe) << endl; //pe time == 0
+            check_cl_error(status, to_string(__LINE__).c_str());
+        }
+
+        // copy data from page locked host buffer into device memory
+        clEnqueueWriteBuffer(commandQueue, deviceMem, CL_FALSE, 0, size,
+                             hostMem, 0, nullptr, &profileEvent);
+        check_cl_error(status, to_string(__LINE__).c_str());
+
+        check_cl_error(clWaitForEvents(1, &profileEvent), "clWaitForEvents");
+        status = clFinish(commandQueue);
+        check_cl_error(status, to_string(__LINE__).c_str());
+    } else {
+        // mapped access: data is moved between two host memory pointers and
+        // copied into GPU memory during the unmap operation
+
+        // map device memory into host memory
+        void *hostMappedDeviceMem =
+            clEnqueueMapBuffer(commandQueue, deviceMem, CL_FALSE, CL_MAP_WRITE,
+                               0, size, 0, nullptr, nullptr, &status);
+        check_cl_error(status, to_string(__LINE__).c_str());
+        if (pinned) {
+            // if pinned buffer available map host page locked buffer to
+            // host memory pointer
+            hostMem = (uint8_t *)clEnqueueMapBuffer(
+                commandQueue, hostPinnedMem, CL_FALSE, CL_MAP_READ, 0, size, 0,
+                nullptr, nullptr, &status);
+            check_cl_error(status, to_string(__LINE__).c_str());
+        }
+
+        // copy data from host memory to host memory mapping device memory
+        memcpy(hostMappedDeviceMem, hostMem, size);
+
+        // DATA is moved from host to device in unmap operation, this is the
+        // only operation that should be timed to compute host to device
+        // bandwidth
+        status = clEnqueueUnmapMemObject(commandQueue, deviceMem,
+                                         hostMappedDeviceMem, 0, nullptr,
+                                         &profileEvent);
+        check_cl_error(status, to_string(__LINE__).c_str());
+        clWaitForEvents(1, &profileEvent);
+        status = clFinish(commandQueue);
+        check_cl_error(status, to_string(__LINE__).c_str());
+    }
+
+    const double elapsedTimeSec = profile_time_s(profileEvent);
+    const double bandwidthMB =
+        ((double)size / (elapsedTimeSec * (double)(1 << 20)));
+
+    // clean up memory
+    if (deviceMem) clReleaseMemObject(deviceMem);
+    if (hostPinnedMem) {
+        clReleaseMemObject(hostPinnedMem);
+    } else {
+        free(hostMem);
+    }
+    return bandwidthMB;
 }
 
 //------------------------------------------------------------------------------
+double copy_device_to_host(cl_context context, cl_command_queue commandQueue,
+                           size_t size, bool mapped, bool pinned) {
+    cl_int status = -1;
+    uint8_t *hostMem = nullptr;
+    cl_mem hostPinnedMem = nullptr;
+    cl_mem deviceMem = nullptr;
+    cl_event profileEvent;
+    // Allocate host memory
+    if (pinned) {
+        // Create a host buffer, buffer is read/write because we also use it
+        // to initialise GPU memory before timing the transfer back
+        hostPinnedMem =
+            clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
+                           size, 0, &status);
+        check_cl_error(status, to_string(__LINE__).c_str());
+
+        // Map pinned buffer to host pointer
+        hostMem = (uint8_t *)clEnqueueMapBuffer(commandQueue, hostPinnedMem,
+                                                CL_TRUE, CL_MAP_WRITE, 0, size,
+                                                0, 0, 0, &status);
+        check_cl_error(status, to_string(__LINE__).c_str());
+
+        // initialize
+        for (int i = 0; i != size; ++i) {
+            hostMem[i] = (uint8_t)(i);
+        }
+
+        // unmap paage locked memory region
+        status = clEnqueueUnmapMemObject(commandQueue, hostPinnedMem,
+                                         (void *)hostMem, 0, 0, 0);
+        hostMem = nullptr;
+        check_cl_error(status, to_string(__LINE__).c_str());
+
+    } else {
+        // standard host alloc
+        hostMem = (uint8_t *)malloc(size);
+
+        // initialize
+        for (int i = 0; i != size; ++i) {
+            hostMem[i] = (uint8_t)(i);
+        }
+    }
+
+    // allocate device memory to be written by kernel
+    deviceMem = clCreateBuffer(context, CL_MEM_WRITE_ONLY, size, 0, &status);
+    check_cl_error(status, to_string(__LINE__).c_str());
+
+    // initialize device memory: copy data from host to device
+    if (pinned) {
+        // get a mapped pointer
+        hostMem = (uint8_t *)clEnqueueMapBuffer(commandQueue, hostPinnedMem,
+                                                CL_TRUE, CL_MAP_WRITE, 0, size,
+                                                0, 0, 0, &status);
+
+        // copy data from host to device
+        status = clEnqueueWriteBuffer(commandQueue, deviceMem, CL_FALSE, 0,
+                                      size, hostMem, 0, 0, 0);
+        check_cl_error(status, to_string(__LINE__).c_str());
+
+        clEnqueueUnmapMemObject(commandQueue, hostPinnedMem, (void *)hostMem, 0,
+                                0, 0);
+        check_cl_error(status, to_string(__LINE__).c_str());
+
+    } else {
+        // no mapping here just copy from host to device directly
+        status = clEnqueueWriteBuffer(commandQueue, deviceMem, CL_FALSE, 0,
+                                      size, hostMem, 0, 0, 0);
+        check_cl_error(status, to_string(__LINE__).c_str());
+    }
+    check_cl_error(status, to_string(__LINE__).c_str());
+
+    // sync queue
+    status = clFinish(commandQueue);
+
+    if (!mapped) {
+        // DIRECT:  API access to device buffee
+
+        if (pinned) {
+            // get a mapped pointer
+            hostMem = (uint8_t *)clEnqueueMapBuffer(commandQueue, hostPinnedMem,
+                                                    CL_FALSE, CL_MAP_WRITE, 0,
+                                                    size, 0, 0, 0, &status);
+            check_cl_error(status, to_string(__LINE__).c_str());
+        }
+
+        status = clEnqueueReadBuffer(commandQueue, deviceMem, CL_FALSE, 0, size,
+                                     hostMem, 0, 0, &profileEvent);
+
+        check_cl_error(status, to_string(__LINE__).c_str());
+        check_cl_error(clWaitForEvents(1, &profileEvent), "clWaitForEvents");
+
+        if (pinned) {
+            clEnqueueUnmapMemObject(commandQueue, hostPinnedMem,
+                                    (void *)hostMem, 0, 0, 0);
+            check_cl_error(status, to_string(__LINE__).c_str());
+        }
+
+        status = clFinish(commandQueue);
+        check_cl_error(status, to_string(__LINE__).c_str());
+    } else {
+        // MAPPED: mapped pointers to device buffer for conventional pointer
+        // access
+        void *hostMappedDeviceMem =
+            clEnqueueMapBuffer(commandQueue, deviceMem, CL_FALSE, CL_MAP_WRITE,
+                               0, size, 0, 0, 0, &status);
+        check_cl_error(status, to_string(__LINE__).c_str());
+
+        memcpy(hostMem, hostMappedDeviceMem, size);
+        status = clEnqueueUnmapMemObject(
+            commandQueue, deviceMem, hostMappedDeviceMem, 0, 0, &profileEvent);
+        check_cl_error(status, to_string(__LINE__).c_str());
+        check_cl_error(clWaitForEvents(1, &profileEvent), "clWaitForEvents");
+    }
+    const double elapsedTimeSec = profile_time_s(profileEvent);
+    // calculate bandwidth in MB/s
+    const double bandwidthMB =
+        ((double)size / (elapsedTimeSec * (double)(1 << 20)));
+
+    // clean up memory
+    if (deviceMem) clReleaseMemObject(deviceMem);
+    if (hostPinnedMem) {
+        clReleaseMemObject(hostPinnedMem);
+    } else {
+        free(hostMem);
+    }
+
+    return bandwidthMB;
+}
+
+//------------------------------------------------------------------------------
+double copy_device_to_device(cl_context context, cl_command_queue commandQueue,
+                             size_t size) {
+    cl_int status = -1;
+    uint8_t *hostMem = nullptr;
+    cl_mem deviceMem = nullptr;
+    cl_event profileEvent;
+
+    // allocate and initialize host memory
+    hostMem = (uint8_t *)malloc(size);
+
+    for (int i = 0; i != size; ++i) {
+        hostMem[i] = (uint8_t)(i);
+    }
+
+    // allocate source and destination device buffers
+    cl_mem devSrc =
+        clCreateBuffer(context, CL_MEM_READ_ONLY, size, nullptr, &status);
+    check_cl_error(status, to_string(__LINE__).c_str());
+
+    cl_mem devDest =
+        clCreateBuffer(context, CL_MEM_WRITE_ONLY, size, nullptr, &status);
+    check_cl_error(status, to_string(__LINE__).c_str());
+
+    // initialize device buffer with host data
+    status = clEnqueueWriteBuffer(commandQueue, devSrc, CL_TRUE, 0, size,
+                                  hostMem, 0, nullptr, nullptr);
+    check_cl_error(status, to_string(__LINE__).c_str());
+
+    // Sync queue to host,
+    clFinish(commandQueue);
+
+    // copy data on device from src to dest buffer
+    status = clEnqueueCopyBuffer(commandQueue, devSrc, devDest, 0, 0, size, 0,
+                                 nullptr, &profileEvent);
+    check_cl_error(status, to_string(__LINE__).c_str());
+    check_cl_error(clWaitForEvents(1, &profileEvent), "clWaitForEvents");
+
+    // sync
+    clFinish(commandQueue);
+
+    const double elapsedTimeSec = profile_time_s(profileEvent);
+    const double bandwidthMB =
+        ((double)size / (elapsedTimeSec * (double)(1 << 20)));
+
+    // clean up memory on host and device
+    free(hostMem);
+    clReleaseMemObject(devSrc);
+    clReleaseMemObject(devDest);
+
+    return bandwidthMB;
+}
+
+//------------------------------------------------------------
 int main(int argc, char **argv) {
-    if (argc < 5) {
-        std::cout << "usage: " << argv[0]
-                  << " <platform name>"
-                     " <device type: default | cpu | gpu | acc>"
-                     " <device num>"
-                     " <size>"
-                  << std::endl;
+    vector<string> cmdline;
+    copy(argv, argv + argc, back_inserter(cmdline));
+
+    if (cmdline.size() < 5) {
+        cerr << "usage: " << cmdline[0]
+             << " <platform name>"
+                " <device type: default | cpu | gpu | acc>"
+                " <device num>"
+                " <size>"
+                " [mapped (default = not mapped)]"
+                " [pinned (default = not pinned)]"
+                " [--iterations <num iterations, default=1>]"
+             << endl;
         exit(EXIT_FAILURE);
+    }
+    const bool PINNED =
+        find(begin(cmdline), end(cmdline), "pinned") != end(cmdline);
+    const bool MAPPED =
+        find(begin(cmdline), end(cmdline), "mapped") != end(cmdline);
+    int iterations = 1;
+    if (find(begin(cmdline), end(cmdline), "--iterations") != end(cmdline)) {
+        auto i = find(begin(cmdline), end(cmdline), "--iterations");
+        if (++i == end(cmdline)) {
+            cerr << "missing number of iterations" << endl;
+            exit(EXIT_FAILURE);
+        }
+        iterations = atoi(i->c_str());
+        if (iterations <= 0) {
+            std::cerr << "number of iterations must be greater that zero"
+                      << endl;
+        }
     }
     const int platformID = atoi(argv[1]);
     cl_device_type deviceType;
-    const std::string dt(argv[2]);
+    const string dt(argv[2]);
     if (dt == "default")
         deviceType = CL_DEVICE_TYPE_DEFAULT;
     else if (dt == "cpu")
@@ -214,7 +376,7 @@ int main(int argc, char **argv) {
     else if (dt == "acc")
         deviceType = CL_DEVICE_TYPE_ACCELERATOR;
     else {
-        std::cerr << "ERROR - unrecognized device type " << dt << std::endl;
+        cerr << "ERROR - unrecognized device type " << dt << endl;
         exit(EXIT_FAILURE);
     }
     const int deviceID = atoi(argv[3]);
@@ -225,18 +387,32 @@ int main(int argc, char **argv) {
     cl_int status;
 
     ByteArray data(SIZE);
-    
-    const double h2dpl = copy_host_to_device_page_locked(data, clenv);
-    //const double d2hpl = copy_device_to_host_page_locked(data, context, queue);
 
-    std::cout
-        << "  host to device - page locked: " << h2dpl << std::endl;
-    //<< "  device to host - page locked: " << d2hpl << std::endl;
-    std::cout
-        << "  host to device - page locked: " << GBs(SIZE, h2dpl / 1E3)
-        << std::endl;
-    //<< "  device to host - page locked: " << GBs(SIZE, d2hpl / 1E3)
-    //<< std::endl;
+    double H2D_BW_MB = 0.0;
+    for (int i = 0; i != iterations; ++i) {
+        H2D_BW_MB += copy_host_to_device(clenv.context, clenv.commandQueue,
+                                         SIZE, MAPPED, PINNED);
+    }
+    double D2H_BW_MB = 0.0;
+    for (int i = 0; i != iterations; ++i) {
+        D2H_BW_MB += copy_device_to_host(clenv.context, clenv.commandQueue,
+                                         SIZE, MAPPED, PINNED);
+    }
+    D2H_BW_MB /= iterations;
+    double D2D_BW_MB = 0.0;
+    for (int i = 0; i != iterations; ++i) {
+        D2D_BW_MB +=
+            copy_device_to_device(clenv.context, clenv.commandQueue, SIZE);
+    }
+    D2D_BW_MB /= iterations;
+
+    cout << "Memory configuration:\n";
+    cout << (PINNED ? "  PINNED" : "  NOT PINNED") << endl;
+    cout << (MAPPED ? "  MAPPED" : "  NOT MAPPED") << endl;
+    cout << "Bandwidth (MB/s):\n"
+         << "  Host to device:   " << H2D_BW_MB << endl
+         << "  Device to host:   " << D2H_BW_MB << endl
+         << "  Device to device: " << D2D_BW_MB << endl;
 
     return 0;
 }
